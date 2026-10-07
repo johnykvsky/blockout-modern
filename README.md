@@ -26,6 +26,7 @@ A modern, streamlined 3D Tetris puzzle game rewritten in **C++20** using **Rayli
   * Toggleable Ghost piece shadow on the pit floor (<kbd>G</kbd>).
   * Local persistent high score (`highscore.txt`).
   * Full JSON configuration with comprehensive validation (`config.json`).
+* **Confirmation Dialogs**: Built-in modal confirmation dialogs for both **Quitting** (<kbd>ESC</kbd> / Window Close) and **Restarting** (<kbd>R</kbd> / <kbd>F2</kbd>) prevent accidental game interruption, with interactive mouse buttons and keyboard (<kbd>Y</kbd>/<kbd>Enter</kbd>/<kbd>N</kbd>/<kbd>ESC</kbd>) support.
 
 ---
 
@@ -73,10 +74,11 @@ You can customize the pit dimensions and window resolution by editing `config.js
 | **G** | Toggle Shadow / Ghost Piece (ON / OFF) |
 | **F11** or **Alt + Enter** | Toggle Fullscreen |
 | **P** | Pause / Resume |
+| **R** or **F2** | Restart Game (opens confirmation dialog during gameplay) |
 | **Escape** or **Window Close (X)** | Quit Game (opens confirmation dialog) |
-| **Y** or **Enter** / Click **YES** | Confirm Exit |
-| **N** or **Escape** / Click **NO** | Cancel Exit & Resume Game |
-| **R** or **Enter** | Restart (when Game Over) |
+| **Y** or **Enter** / Click **YES** | Confirm Restart / Exit |
+| **N** or **Escape** / Click **NO** | Cancel Dialog & Resume Game |
+| **R** or **Enter** or **Space** | Instant Restart (when Game Over) |
 
 ---
 

@@ -9,7 +9,7 @@ class Renderer {
 public:
     Renderer(int screen_width, int screen_height);
 
-    void draw(const Game& game, bool quit_requested = false);
+    void draw(const Game& game, bool quit_requested = false, bool restart_requested = false);
 
 private:
     int screen_width_;
@@ -32,7 +32,7 @@ private:
     void draw_active_piece(const Game& game);
     void draw_ghost_piece(const Game& game);
     void draw_sparks(const Game& game);
-    void draw_hud(const Game& game, bool quit_requested = false);
+    void draw_hud(const Game& game, bool quit_requested = false, bool restart_requested = false);
 
     Color get_piece_color(int id, float alpha = 1.0f) const;
 };

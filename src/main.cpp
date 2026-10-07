@@ -47,6 +47,7 @@ int main() {
     };
 
     bool quit_requested = false;
+    bool restart_requested = false;
     bool should_exit = false;
 
     while (!should_exit) {
@@ -54,6 +55,7 @@ int main() {
 
         // Detect window close request (clicking X on window title bar)
         if (WindowShouldClose()) {
+            if (restart_requested) restart_requested = false;
             quit_requested = true;
         }
 
@@ -69,9 +71,18 @@ int main() {
             config.save("config.json");
         }
 
-        // ESC Key: Toggle quit confirmation
+        // ESC Key: Cancel restart dialog if open, else toggle quit confirmation
         if (IsKeyPressed(KEY_ESCAPE)) {
-            quit_requested = !quit_requested;
+            if (restart_requested) {
+                restart_requested = false;
+            } else {
+                quit_requested = !quit_requested;
+            }
+        }
+
+        // Restart Key (R or F2): If playing/paused and quit dialog is not active, toggle restart confirmation
+        if (!quit_requested && game.state() != GameState::GameOver && (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_F2))) {
+            restart_requested = !restart_requested;
         }
 
         if (quit_requested) {
@@ -101,6 +112,35 @@ int main() {
                     quit_requested = false;
                 }
             }
+        } else if (restart_requested) {
+            // Confirm Restart: Y or Enter
+            if (IsKeyPressed(KEY_Y) || IsKeyPressed(KEY_ENTER)) {
+                game.reset();
+                restart_requested = false;
+            }
+            // Cancel Restart: N
+            if (IsKeyPressed(KEY_N)) {
+                restart_requested = false;
+            }
+
+            // Mouse button interaction for [YES] / [NO] buttons
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                int play_area_w = GetScreenWidth() - 300;
+                int cx = play_area_w / 2;
+                int cy = GetScreenHeight() / 2;
+                int my = cy - 90;
+
+                Rectangle btn_yes = {static_cast<float>(cx - 135), static_cast<float>(my + 108), 120.0f, 44.0f};
+                Rectangle btn_no  = {static_cast<float>(cx + 15),  static_cast<float>(my + 108), 120.0f, 44.0f};
+
+                Vector2 mouse = GetMousePosition();
+                if (CheckCollisionPointRec(mouse, btn_yes)) {
+                    game.reset();
+                    restart_requested = false;
+                } else if (CheckCollisionPointRec(mouse, btn_no)) {
+                    restart_requested = false;
+                }
+            }
         } else {
             // Pause Toggle (P key)
             if (IsKeyPressed(KEY_P)) {
@@ -109,61 +149,61 @@ int main() {
 
             // Restart on Game Over
             if (game.state() == GameState::GameOver) {
-                if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+                if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_F2)) {
                     game.reset();
                 }
             }
 
-        if (game.state() == GameState::Playing) {
-            // Translations (Arrows / Numpad)
-            update_das(IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_KP_4),
-                       IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_KP_4),
-                       das_left, [&]() { game.move(-1, 0); });
+            if (game.state() == GameState::Playing) {
+                // Translations (Arrows / Numpad)
+                update_das(IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_KP_4),
+                           IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_KP_4),
+                           das_left, [&]() { game.move(-1, 0); });
 
-            update_das(IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_KP_6),
-                       IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_KP_6),
-                       das_right, [&]() { game.move(1, 0); });
+                update_das(IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_KP_6),
+                           IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_KP_6),
+                           das_right, [&]() { game.move(1, 0); });
 
-            update_das(IsKeyDown(KEY_UP) || IsKeyDown(KEY_KP_8),
-                       IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_KP_8),
-                       das_up, [&]() { game.move(0, -1); });
+                update_das(IsKeyDown(KEY_UP) || IsKeyDown(KEY_KP_8),
+                           IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_KP_8),
+                           das_up, [&]() { game.move(0, -1); });
 
-            update_das(IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_KP_2),
-                       IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_KP_2),
-                       das_down, [&]() { game.move(0, 1); });
+                update_das(IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_KP_2),
+                           IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_KP_2),
+                           das_down, [&]() { game.move(0, 1); });
 
-            // 3D Rotations (Q/A = Pitch, W/S = Yaw, E/D = Roll)
-            // Pitch (X axis)
-            if (IsKeyPressed(KEY_Q) || IsKeyPressed(KEY_KP_7)) game.rotate_x(1);
-            if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_KP_1)) game.rotate_x(-1);
+                // 3D Rotations (Q/A = Pitch, W/S = Yaw, E/D = Roll)
+                // Pitch (X axis)
+                if (IsKeyPressed(KEY_Q) || IsKeyPressed(KEY_KP_7)) game.rotate_x(1);
+                if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_KP_1)) game.rotate_x(-1);
 
-            // Yaw (Y axis)
-            if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_KP_9)) game.rotate_y(1);
-            if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_KP_3)) game.rotate_y(-1);
+                // Yaw (Y axis)
+                if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_KP_9)) game.rotate_y(1);
+                if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_KP_3)) game.rotate_y(-1);
 
-            // Roll (Z axis)
-            if (IsKeyPressed(KEY_E) || IsKeyPressed(KEY_KP_DIVIDE)) game.rotate_z(1);
-            if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_KP_MULTIPLY)) game.rotate_z(-1);
+                // Roll (Z axis)
+                if (IsKeyPressed(KEY_E) || IsKeyPressed(KEY_KP_DIVIDE)) game.rotate_z(1);
+                if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_KP_MULTIPLY)) game.rotate_z(-1);
 
-            // Hard Drop
-            if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_KP_0)) {
-                game.hard_drop();
+                // Hard Drop
+                if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_KP_0)) {
+                    game.hard_drop();
+                }
+
+                // Toggle Shadow / Ghost Piece
+                if (IsKeyPressed(KEY_G)) {
+                    game.toggle_ghost();
+                }
             }
 
-            // Toggle Shadow / Ghost Piece
-            if (IsKeyPressed(KEY_G)) {
-                game.toggle_ghost();
-            }
+            // Update physics & gravity (only when not in a modal dialog)
+            game.update(dt);
         }
 
-        // Update physics & gravity (only when not confirming quit)
-        game.update(dt);
+        // Render frame
+        renderer.draw(game, quit_requested, restart_requested);
     }
 
-    // Render frame
-    renderer.draw(game, quit_requested);
-}
-
-CloseWindow();
-return 0;
+    CloseWindow();
+    return 0;
 }

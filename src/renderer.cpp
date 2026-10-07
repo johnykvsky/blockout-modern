@@ -296,7 +296,7 @@ void Renderer::draw_sparks(const Game& game) {
     DrawLine3D({p.x, p.y, p.z - radius}, {p.x, p.y, p.z + radius}, YELLOW);
 }
 
-void Renderer::draw_hud(const Game& game, bool quit_requested) {
+void Renderer::draw_hud(const Game& game, bool quit_requested, bool restart_requested) {
     int panel_x = screen_width_ - 300;
     int panel_w = 300;
 
@@ -336,13 +336,13 @@ void Renderer::draw_hud(const Game& game, bool quit_requested) {
     DrawText(TextFormat("%d", game.cubes_placed()), panel_x + 30, y + 22, 24, WHITE);
 
     // Controls Legend Card
-    int card_y = (screen_height_ < 720) ? y + 50 : y + 65;
-    int card_h = (screen_height_ < 720) ? 218 : 230;
+    int card_y = (screen_height_ < 720) ? y + 42 : y + 60;
+    int card_h = (screen_height_ < 720) ? 228 : 246;
     DrawRectangle(panel_x + 18, card_y, panel_w - 36, card_h, Fade({25, 35, 50, 255}, 0.7f));
     DrawRectangleLines(panel_x + 18, card_y, panel_w - 36, card_h, Fade({60, 120, 180, 255}, 0.4f));
 
     int item_y = card_y + 8;
-    int cstep = (screen_height_ < 720) ? 19 : 21;
+    int cstep = (screen_height_ < 720) ? 18 : 20;
     DrawText("CONTROLS", panel_x + 30, item_y, 16, {0, 220, 255, 255}); item_y += cstep + 2;
     DrawText("Move: Arrows", panel_x + 30, item_y, 14, RAYWHITE); item_y += cstep;
     DrawText("Pitch (X): Q / A", panel_x + 30, item_y, 14, RAYWHITE); item_y += cstep;
@@ -353,6 +353,7 @@ void Renderer::draw_hud(const Game& game, bool quit_requested) {
              panel_x + 30, item_y, 14, game.show_ghost() ? Color{100, 255, 160, 255} : Color{180, 180, 180, 255}); item_y += cstep;
     DrawText("Fullscreen: F11", panel_x + 30, item_y, 14, {140, 200, 255, 255}); item_y += cstep;
     DrawText("Pause: P", panel_x + 30, item_y, 14, RAYWHITE); item_y += cstep;
+    DrawText("Restart: R", panel_x + 30, item_y, 14, {255, 200, 100, 255}); item_y += cstep;
     DrawText("Quit: ESC", panel_x + 30, item_y, 14, {255, 120, 120, 255});
 
     // Modals (centered over left play area)
@@ -371,8 +372,43 @@ void Renderer::draw_hud(const Game& game, bool quit_requested) {
         DrawRectangleLines(mx, my, modal_w, modal_h, {255, 170, 50, 255});
         DrawRectangleLines(mx + 1, my + 1, modal_w - 2, modal_h - 2, {255, 120, 40, 180});
 
-        DrawText("QUIT GAME?", cx - 85, my + 22, 28, {255, 200, 60, 255});
-        DrawText("Are you sure you want to exit?", cx - 128, my + 62, 17, RAYWHITE);
+        const char* title = "QUIT GAME?";
+        DrawText(title, cx - MeasureText(title, 28) / 2, my + 22, 28, {255, 200, 60, 255});
+        const char* sub = "Are you sure you want to exit?";
+        DrawText(sub, cx - MeasureText(sub, 17) / 2, my + 62, 17, RAYWHITE);
+
+        // Interactive Yes and No buttons
+        Rectangle btn_yes = {static_cast<float>(cx - 135), static_cast<float>(my + 108), 120.0f, 44.0f};
+        Rectangle btn_no  = {static_cast<float>(cx + 15),  static_cast<float>(my + 108), 120.0f, 44.0f};
+
+        Vector2 mouse = GetMousePosition();
+        bool hover_yes = CheckCollisionPointRec(mouse, btn_yes);
+        bool hover_no  = CheckCollisionPointRec(mouse, btn_no);
+
+        // Yes Button
+        DrawRectangleRec(btn_yes, hover_yes ? Color{210, 60, 60, 255} : Color{140, 35, 35, 220});
+        DrawRectangleLinesEx(btn_yes, 2, hover_yes ? Color{255, 140, 140, 255} : Color{220, 80, 80, 255});
+        DrawText("YES (Y)", static_cast<int>(btn_yes.x) + 26, static_cast<int>(btn_yes.y) + 13, 17, WHITE);
+
+        // No Button
+        DrawRectangleRec(btn_no, hover_no ? Color{40, 160, 80, 255} : Color{25, 110, 55, 220});
+        DrawRectangleLinesEx(btn_no, 2, hover_no ? Color{120, 255, 160, 255} : Color{60, 200, 100, 255});
+        DrawText("NO (N)", static_cast<int>(btn_no.x) + 30, static_cast<int>(btn_no.y) + 13, 17, WHITE);
+    } else if (restart_requested) {
+        int modal_w = 400;
+        int modal_h = 180;
+        int mx = cx - modal_w / 2;
+        int my = cy - modal_h / 2;
+
+        // Dark modal card with bright cyan border
+        DrawRectangle(mx, my, modal_w, modal_h, Fade({12, 16, 26, 255}, 0.96f));
+        DrawRectangleLines(mx, my, modal_w, modal_h, {0, 220, 255, 255});
+        DrawRectangleLines(mx + 1, my + 1, modal_w - 2, modal_h - 2, {0, 160, 220, 180});
+
+        const char* title = "RESTART GAME?";
+        DrawText(title, cx - MeasureText(title, 28) / 2, my + 22, 28, {0, 220, 255, 255});
+        const char* sub = "Are you sure you want to restart?";
+        DrawText(sub, cx - MeasureText(sub, 17) / 2, my + 62, 17, RAYWHITE);
 
         // Interactive Yes and No buttons
         Rectangle btn_yes = {static_cast<float>(cx - 135), static_cast<float>(my + 108), 120.0f, 44.0f};
@@ -405,7 +441,7 @@ void Renderer::draw_hud(const Game& game, bool quit_requested) {
     }
 }
 
-void Renderer::draw(const Game& game, bool quit_requested) {
+void Renderer::draw(const Game& game, bool quit_requested, bool restart_requested) {
     screen_width_ = GetScreenWidth();
     screen_height_ = GetScreenHeight();
 
@@ -427,7 +463,7 @@ void Renderer::draw(const Game& game, bool quit_requested) {
     EndMode3D();
 
     // 2. Draw 2D HUD sidebar on the right side
-    draw_hud(game, quit_requested);
+    draw_hud(game, quit_requested, restart_requested);
 
     EndDrawing();
 }
