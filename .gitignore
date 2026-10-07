@@ -1,68 +1,86 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-*.so.*
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Build directories
+# ==========================================
+# Build outputs and binaries
+# ==========================================
+bin/*
+!bin/.gitkeep
+obj/*
+!obj/.gitkeep
 build/
 Build/
 build-*/
 
-# CMake generated files
+# ==========================================
+# Compiled object and library files
+# ==========================================
+*.o
+*.obj
+*.slo
+*.lo
+*.a
+*.lib
+*.la
+*.lai
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.app
+
+# ==========================================
+# Compiler dependencies and precompiled headers
+# ==========================================
+*.d
+*.dwo
+*.gch
+*.pch
+
+# ==========================================
+# Debug symbols and build artifacts
+# ==========================================
+*.dSYM/
+*.pdb
+*.ilk
+*.out
+
+# ==========================================
+# CMake / Language Server artifacts
+# Note: Makefile is our actual source file, so it is NOT ignored!
+# ==========================================
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-Makefile
 install_manifest.txt
 compile_commands.json
+.cache/
 
-# Temporary files
-*.tmp
+# ==========================================
+# Local runtime and log files
+# ==========================================
+highscore.txt
 *.log
+*.tmp
 *.bak
-*.swp
 
-# vcpkg
+# ==========================================
+# Third-party dependencies
+# Raylib is fetched via 'make deps'; only the directory structure is tracked
+# ==========================================
+third_party/raylib/*
+!third_party/raylib/.gitkeep
+
+# ==========================================
+# Package managers
+# ==========================================
 vcpkg_installed/
 
-# debug information files
-*.dwo
-
-# test output & cache
-Testing/
-.cache/
+# ==========================================
+# Editor and OS temporary files
+# ==========================================
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
