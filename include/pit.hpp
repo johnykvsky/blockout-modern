@@ -22,6 +22,7 @@ public:
 
     bool is_line_full(int z) const;
     bool is_line_empty(int z) const;
+    int line_cube_count(int z) const;
     bool is_empty() const;
 
     int remove_full_lines();

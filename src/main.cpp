@@ -17,7 +17,7 @@ int main() {
 
     AudioManager audio;
     Game game(audio, config);
-    Renderer renderer(config.window_width, config.window_height);
+    Renderer renderer(config.window_width, config.window_height, config.get_theme(), config.color_by_layer);
 
     // DAS (Delayed Auto Shift) timers for smooth movement
     struct DasState {

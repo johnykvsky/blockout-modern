@@ -56,6 +56,17 @@ bool Pit::is_line_empty(int z) const {
     return true;
 }
 
+int Pit::line_cube_count(int z) const {
+    if (z < 0 || z >= depth_) return 0;
+    int count = 0;
+    for (int y = 0; y < height_; ++y) {
+        for (int x = 0; x < width_; ++x) {
+            if (cells_[index(x, y, z)] != 0) count++;
+        }
+    }
+    return count;
+}
+
 bool Pit::is_empty() const {
     for (int z = 0; z < depth_; ++z) {
         if (!is_line_empty(z)) return false;

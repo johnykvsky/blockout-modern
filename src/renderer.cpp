@@ -8,16 +8,17 @@
 
 namespace blockout {
 
-Renderer::Renderer(int screen_width, int screen_height)
-    : screen_width_(screen_width), screen_height_(screen_height) {
+Renderer::Renderer(int screen_width, int screen_height, const ColorTheme& theme, bool color_by_layer)
+    : screen_width_(screen_width), screen_height_(screen_height), theme_(theme), color_by_layer_(color_by_layer) {
     camera_.up = {0.0f, 1.0f, 0.0f};
     camera_.fovy = 50.0f;
     camera_.projection = CAMERA_PERSPECTIVE;
 }
 
 void Renderer::update_camera(const Pit& pit) {
-    float panel_w = 300.0f;
-    float play_area_w = static_cast<float>(screen_width_) - panel_w;
+    float left_panel_w = 180.0f;
+    float right_panel_w = 300.0f;
+    float play_area_w = static_cast<float>(screen_width_) - left_panel_w - right_panel_w;
     float aspect_play = play_area_w / static_cast<float>(screen_height_);
     float half_fov_rad = 50.0f * 0.5f * (3.14159265f / 180.0f);
 
@@ -28,8 +29,8 @@ void Renderer::update_camera(const Pit& pit) {
     float req_dist_h = half_w / (std::tan(half_fov_rad) * std::max(0.1f, aspect_play));
     float dist = std::max(req_dist_v, req_dist_h);
 
-    // Exact horizontal offset to center pit in the left play area (screen_width_ - 300)
-    float offset_x = -(panel_w / static_cast<float>(screen_height_)) * dist * std::tan(half_fov_rad);
+    // Exact horizontal offset to center pit in the center play area between left (180px) and right (300px) sidebars:
+    float offset_x = ((left_panel_w - right_panel_w) / static_cast<float>(screen_height_)) * dist * std::tan(half_fov_rad);
 
     camera_.position = {offset_x, 0.0f, -0.5f - dist};
     camera_.target   = {offset_x, 0.0f, static_cast<float>(pit.depth()) * 0.5f};
@@ -57,18 +58,22 @@ Vector3 Renderer::vertex_to_world(float vx, float vy, float vz, int pit_w, int p
 }
 
 Color Renderer::get_piece_color(int id, float alpha) const {
-    Color base_colors[] = {
-        {229, 192, 123, 255}, // 0: Gold
-        {86, 182, 194, 255},  // 1: Cyan
-        {152, 195, 121, 255}, // 2: Lime
-        {209, 154, 102, 255}, // 3: Orange
-        {97, 175, 239, 255},  // 4: Sky Blue
-        {198, 120, 221, 255}, // 5: Purple
-        {224, 108, 117, 255}, // 6: Coral Red
-        {78, 201, 176, 255}   // 7: Teal
-    };
-    Color c = base_colors[std::abs(id) % 8];
+    if (theme_.piece_colors.empty()) {
+        return Fade(WHITE, alpha);
+    }
+    Color c = theme_.piece_colors[std::abs(id) % theme_.piece_colors.size()];
     return Fade(c, alpha);
+}
+
+Color Renderer::get_layer_color(int z, int depth, float alpha) const {
+    if (theme_.layer_colors.empty()) {
+        return Fade(WHITE, alpha);
+    }
+    // Layer index ordered from floor (z = depth - 1) up to opening (z = 0)
+    int level_from_floor = (depth - 1) - z;
+    if (level_from_floor < 0) level_from_floor = 0;
+    int idx = level_from_floor % static_cast<int>(theme_.layer_colors.size());
+    return Fade(theme_.layer_colors[idx], alpha);
 }
 
 void Renderer::draw_pit_wireframe(const Pit& pit) {
@@ -81,7 +86,7 @@ void Renderer::draw_pit_wireframe(const Pit& pit) {
     for (int x = 0; x <= pit.width(); ++x) {
         float wx = -hw + static_cast<float>(x) * cube_size_;
         bool is_corner = (x == 0 || x == pit.width());
-        Color col = is_corner ? Color{50, 180, 255, 255} : Color{40, 130, 200, 140};
+        Color col = is_corner ? theme_.pit_corner : theme_.pit_grid;
         DrawLine3D({wx,  hh, z_front}, {wx,  hh, z_back}, col);
         DrawLine3D({wx, -hh, z_front}, {wx, -hh, z_back}, col);
     }
@@ -90,7 +95,7 @@ void Renderer::draw_pit_wireframe(const Pit& pit) {
     for (int y = 0; y <= pit.height(); ++y) {
         float wy = -hh + static_cast<float>(y) * cube_size_;
         bool is_corner = (y == 0 || y == pit.height());
-        Color col = is_corner ? Color{50, 180, 255, 255} : Color{40, 130, 200, 140};
+        Color col = is_corner ? theme_.pit_corner : theme_.pit_grid;
         DrawLine3D({-hw, wy, z_front}, {-hw, wy, z_back}, col);
         DrawLine3D({ hw, wy, z_front}, { hw, wy, z_back}, col);
     }
@@ -100,11 +105,11 @@ void Renderer::draw_pit_wireframe(const Pit& pit) {
         float wz = (static_cast<float>(z) - 0.5f) * cube_size_;
         Color ring_col;
         if (z == 0) {
-            ring_col = {0, 255, 200, 255}; // Bold neon opening
+            ring_col = theme_.pit_opening; // Bold neon opening
         } else if (z == pit.depth()) {
-            ring_col = {0, 220, 255, 240}; // Back floor perimeter
+            ring_col = theme_.pit_floor_perimeter; // Back floor perimeter
         } else {
-            ring_col = {30, 95, 150, 85};  // Subtle depth rings
+            ring_col = theme_.pit_depth_rings;  // Subtle depth rings
         }
         DrawLine3D({-hw, -hh, wz}, { hw, -hh, wz}, ring_col);
         DrawLine3D({ hw, -hh, wz}, { hw,  hh, wz}, ring_col);
@@ -113,7 +118,7 @@ void Renderer::draw_pit_wireframe(const Pit& pit) {
     }
 
     // 4. Back floor grid
-    Color floor_grid_col = {40, 140, 210, 160};
+    Color floor_grid_col = theme_.pit_floor_grid;
     for (int x = 1; x < pit.width(); ++x) {
         float wx = -hw + static_cast<float>(x) * cube_size_;
         DrawLine3D({wx, -hh, z_back}, {wx, hh, z_back}, floor_grid_col);
@@ -132,9 +137,11 @@ void Renderer::draw_cubes(const Pit& pit) {
                 int val = pit.get(x, y, z);
                 if (val > 0) {
                     Vector3 pos = grid_to_world(x, y, z, pit.width(), pit.height());
-                    Color col = get_piece_color(val - 1, 0.85f);
+                    Color col = color_by_layer_
+                        ? get_layer_color(z, pit.depth(), 0.85f)
+                        : get_piece_color(val - 1, 0.85f);
                     DrawCube(pos, sz, sz, sz, col);
-                    DrawCubeWires(pos, sz, sz, sz, Fade(WHITE, 0.6f));
+                    DrawCubeWires(pos, sz, sz, sz, theme_.cube_wireframe);
                 }
             }
         }
@@ -255,7 +262,9 @@ std::vector<Renderer::Edge3D> Renderer::get_outline_edges(
 }
 
 void Renderer::draw_active_piece(const Game& game) {
-    Color edge_col = get_piece_color(game.current_piece().id, 1.0f);
+    Color edge_col = (theme_.active_wireframe.a > 0)
+        ? theme_.active_wireframe
+        : get_piece_color(game.current_piece().id, 1.0f);
     auto cubes = game.get_active_cubes();
     auto edges = get_outline_edges(cubes, game.pit().width(), game.pit().height());
 
@@ -266,8 +275,7 @@ void Renderer::draw_active_piece(const Game& game) {
 
 void Renderer::draw_ghost_piece(const Game& game) {
     float sz = cube_size_ * 0.94f;
-    Color ghost_col = get_piece_color(game.current_piece().id, 0.22f);
-    Color wire_col = Fade(WHITE, 0.40f);
+    Color ghost_col = get_piece_color(game.current_piece().id, theme_.ghost_alpha);
     auto ghost_cubes = game.get_ghost_cubes();
 
     for (const auto& c : ghost_cubes) {
@@ -277,7 +285,7 @@ void Renderer::draw_ghost_piece(const Game& game) {
 
     auto edges = get_outline_edges(ghost_cubes, game.pit().width(), game.pit().height());
     for (const auto& e : edges) {
-        DrawLine3D(e.p1, e.p2, wire_col);
+        DrawLine3D(e.p1, e.p2, theme_.ghost_wireframe);
     }
 }
 
@@ -296,25 +304,20 @@ void Renderer::draw_sparks(const Game& game) {
     DrawLine3D({p.x, p.y, p.z - radius}, {p.x, p.y, p.z + radius}, YELLOW);
 }
 
-void Renderer::draw_next_piece_preview(const Game& game) {
+void Renderer::draw_next_piece_preview(const Game& game, int card_x, int card_y, int card_w, int card_h) {
     if (game.state() == GameState::GameOver) return;
 
     const Piece& next = game.next_piece();
     if (next.cubes.empty()) return;
 
-    int card_x = 24;
-    int card_y = (screen_height_ < 720) ? 20 : 30;
-    int card_w = 160;
-    int card_h = 160;
-
     // Background card matching HUD styling
-    DrawRectangle(card_x, card_y, card_w, card_h, Fade({15, 20, 30, 255}, 0.88f));
-    DrawRectangleLines(card_x, card_y, card_w, card_h, {40, 100, 160, 200});
+    DrawRectangle(card_x, card_y, card_w, card_h, Fade(theme_.hud_background, 0.88f));
+    DrawRectangleLines(card_x, card_y, card_w, card_h, theme_.hud_border);
 
     // Title
     const char* title = "NEXT";
-    int title_sz = 16;
-    DrawText(title, card_x + (card_w - MeasureText(title, title_sz)) / 2, card_y + 12, title_sz, {0, 220, 255, 255});
+    int title_sz = 15;
+    DrawText(title, card_x + (card_w - MeasureText(title, title_sz)) / 2, card_y + 10, title_sz, theme_.hud_title);
 
     // Calculate bounding box of next piece in default orientation
     int min_x = 999, max_x = -999, min_y = 999, max_y = -999;
@@ -327,9 +330,9 @@ void Renderer::draw_next_piece_preview(const Game& game) {
     int pw = max_x - min_x + 1;
     int ph = max_y - min_y + 1;
 
-    int cell_sz = 26;
-    int preview_area_top = card_y + 36;
-    int preview_area_h = card_h - 36 - 26;
+    int cell_sz = 22;
+    int preview_area_top = card_y + 30;
+    int preview_area_h = card_h - 30 - 24;
 
     int cx = card_x + card_w / 2;
     int cy = preview_area_top + preview_area_h / 2;
@@ -356,67 +359,162 @@ void Renderer::draw_next_piece_preview(const Game& game) {
     }
 
     // Piece name at bottom of card
-    int name_sz = 13;
+    int name_sz = 12;
     DrawText(next.name.c_str(),
              card_x + (card_w - MeasureText(next.name.c_str(), name_sz)) / 2,
-             card_y + card_h - 22,
+             card_y + card_h - 18,
              name_sz,
-             {140, 170, 200, 220});
+             theme_.hud_label);
+}
+
+void Renderer::draw_layer_tower(const Game& game, int tower_x, int tower_y, int tower_w, int tower_h) {
+    int num_layers = game.pit().depth();
+    if (num_layers <= 0) return;
+
+    // Header Title
+    int title_sz = 16;
+    const char* title = "LAYERS";
+    DrawText(title, tower_x + (tower_w - MeasureText(title, title_sz)) / 2, tower_y, title_sz, theme_.hud_title);
+
+    const char* sub = "TOP -- FLOOR";
+    int sub_sz = 11;
+    DrawText(sub, tower_x + (tower_w - MeasureText(sub, sub_sz)) / 2, tower_y + 20, sub_sz, Fade(theme_.hud_label, 0.7f));
+
+    int content_top = tower_y + 36;
+    int content_h = tower_h - 40;
+    int slot_h = content_h / num_layers;
+    if (slot_h > 36) slot_h = 36;
+    if (slot_h < 18) slot_h = 18;
+
+    int total_h = slot_h * num_layers;
+    int start_y = content_top + (content_h - total_h) / 2;
+
+    int max_cubes = game.pit().width() * game.pit().height();
+
+    // Render each depth layer from top (z=0, opening) down to bottom (z=num_layers-1, floor)
+    for (int z = 0; z < num_layers; ++z) {
+        int sy = start_y + z * slot_h;
+        int sx = tower_x + 10;
+        int sw = tower_w - 20;
+
+        int cube_count = game.pit().line_cube_count(z);
+        bool occupied = (cube_count > 0);
+        Color layer_col = get_layer_color(z, num_layers, 1.0f);
+
+        // Layer depth label: L12 down to L01 (or 12 down to 1 from floor)
+        int lvl_from_floor = (num_layers - z);
+        const char* lvl_str = TextFormat("%2d", lvl_from_floor);
+        int lbl_sz = (slot_h >= 24) ? 12 : 11;
+        DrawText(lvl_str, sx + 2, sy + (slot_h - lbl_sz) / 2, lbl_sz, occupied ? theme_.hud_score : Fade(theme_.hud_label, 0.7f));
+
+        // Slot bar coordinates
+        int bar_x = sx + 24;
+        int bar_w = sw - 28;
+        int bar_h = slot_h - 3;
+        int bar_y = sy + 1;
+
+        if (occupied) {
+            // Layer background tint
+            DrawRectangle(bar_x, bar_y, bar_w, bar_h, Fade(layer_col, 0.22f));
+
+            // Fill ratio bar
+            float fill_ratio = static_cast<float>(cube_count) / static_cast<float>(max_cubes);
+            int fill_w = static_cast<int>(bar_w * fill_ratio);
+            if (fill_w < 5) fill_w = 5;
+            DrawRectangle(bar_x, bar_y, fill_w, bar_h, Fade(layer_col, 0.90f));
+
+            // Outline
+            DrawRectangleLines(bar_x, bar_y, bar_w, bar_h, layer_col);
+
+            // Cube count label inside bar
+            const char* count_str = TextFormat("%d/%d", cube_count, max_cubes);
+            int count_sz = (slot_h >= 24) ? 11 : 10;
+            int text_x = bar_x + (bar_w - MeasureText(count_str, count_sz)) / 2;
+            int text_y = bar_y + (bar_h - count_sz) / 2;
+            DrawText(count_str, text_x + 1, text_y + 1, count_sz, Fade(BLACK, 0.8f));
+            DrawText(count_str, text_x, text_y, count_sz, WHITE);
+        } else {
+            // Empty layer: subtle outline and centered colored chip
+            DrawRectangleLines(bar_x, bar_y, bar_w, bar_h, Fade(layer_col, 0.35f));
+
+            // Subtle colored dot in the center to highlight the layer's designated color
+            int chip_w = 14;
+            int chip_h = std::max(4, bar_h - 6);
+            DrawRectangle(bar_x + (bar_w - chip_w) / 2, bar_y + (bar_h - chip_h) / 2, chip_w, chip_h, Fade(layer_col, 0.40f));
+        }
+    }
+}
+
+void Renderer::draw_left_panel(const Game& game) {
+    int left_w = 180;
+
+    // Solid background for left sidebar
+    DrawRectangle(0, 0, left_w, screen_height_, theme_.hud_background);
+    DrawLine(left_w, 0, left_w, screen_height_, theme_.hud_border);
+
+    int tower_y = 16;
+    if (game.preview_next_piece()) {
+        int card_x = 12;
+        int card_y = 14;
+        int card_w = left_w - 24; // 156 px
+        int card_h = 132;
+        draw_next_piece_preview(game, card_x, card_y, card_w, card_h);
+        tower_y = card_y + card_h + 14;
+    }
+
+    int tower_h = screen_height_ - tower_y - 12;
+    draw_layer_tower(game, 0, tower_y, left_w, tower_h);
 }
 
 void Renderer::draw_hud(const Game& game, bool quit_requested, bool restart_requested) {
-    // Optional next piece preview on the left side of the pit
-    if (game.preview_next_piece()) {
-        draw_next_piece_preview(game);
-    }
 
     int panel_x = screen_width_ - 300;
     int panel_w = 300;
 
     // Solid background for HUD sidebar
-    DrawRectangle(panel_x, 0, panel_w, screen_height_, {15, 20, 30, 255});
-    DrawLine(panel_x, 0, panel_x, screen_height_, {40, 100, 160, 255});
+    DrawRectangle(panel_x, 0, panel_w, screen_height_, theme_.hud_background);
+    DrawLine(panel_x, 0, panel_x, screen_height_, theme_.hud_border);
 
     // Title
     int title_y = (screen_height_ < 720) ? 20 : 30;
-    DrawText("BLOCKOUT", panel_x + 35, title_y, 36, {0, 220, 255, 255});
-    DrawText("MODERN C++20", panel_x + 37, title_y + 40, 14, {140, 170, 200, 200});
+    DrawText("BLOCKOUT", panel_x + 35, title_y, 36, theme_.hud_title);
+    DrawText("MODERN C++20", panel_x + 37, title_y + 40, 14, Fade(theme_.hud_label, 0.8f));
     DrawText(TextFormat("PIT: %dx%dx%d", game.pit().width(), game.pit().height(), game.pit().depth()),
-             panel_x + 37, title_y + 60, 16, {100, 230, 255, 255});
+             panel_x + 37, title_y + 60, 16, theme_.hud_title);
 
     // Score Board
     int y = (screen_height_ < 720) ? 95 : 125;
-    DrawText("SCORE", panel_x + 30, y, 16, {140, 170, 200, 255});
-    DrawText(TextFormat("%08d", game.score()), panel_x + 30, y + 24, 30, {255, 235, 120, 255});
+    DrawText("SCORE", panel_x + 30, y, 16, theme_.hud_label);
+    DrawText(TextFormat("%08d", game.score()), panel_x + 30, y + 24, 30, theme_.hud_score);
 
     int step_score = (screen_height_ < 720) ? 60 : 75;
     int step_stat  = (screen_height_ < 720) ? 50 : 62;
 
     y += step_score;
-    DrawText("HIGH SCORE", panel_x + 30, y, 16, {140, 170, 200, 255});
+    DrawText("HIGH SCORE", panel_x + 30, y, 16, theme_.hud_label);
     DrawText(TextFormat("%08d", game.high_score()), panel_x + 30, y + 24, 26, {200, 200, 200, 255});
 
     y += step_stat + 8;
-    DrawText("LEVEL", panel_x + 30, y, 16, {140, 170, 200, 255});
+    DrawText("LEVEL", panel_x + 30, y, 16, theme_.hud_label);
     DrawText(TextFormat("%d", game.level()), panel_x + 30, y + 22, 24, {100, 255, 160, 255});
 
     y += step_stat;
-    DrawText("LAYERS CLEARED", panel_x + 30, y, 16, {140, 170, 200, 255});
+    DrawText("LAYERS CLEARED", panel_x + 30, y, 16, theme_.hud_label);
     DrawText(TextFormat("%d", game.lines_cleared()), panel_x + 30, y + 22, 24, WHITE);
 
     y += step_stat;
-    DrawText("CUBES PLACED", panel_x + 30, y, 16, {140, 170, 200, 255});
+    DrawText("CUBES PLACED", panel_x + 30, y, 16, theme_.hud_label);
     DrawText(TextFormat("%d", game.cubes_placed()), panel_x + 30, y + 22, 24, WHITE);
 
     // Controls Legend Card
     int card_y = (screen_height_ < 720) ? y + 42 : y + 60;
     int card_h = (screen_height_ < 720) ? 228 : 246;
-    DrawRectangle(panel_x + 18, card_y, panel_w - 36, card_h, Fade({25, 35, 50, 255}, 0.7f));
-    DrawRectangleLines(panel_x + 18, card_y, panel_w - 36, card_h, Fade({60, 120, 180, 255}, 0.4f));
+    DrawRectangle(panel_x + 18, card_y, panel_w - 36, card_h, Fade(theme_.hud_background, 0.7f));
+    DrawRectangleLines(panel_x + 18, card_y, panel_w - 36, card_h, Fade(theme_.hud_border, 0.4f));
 
     int item_y = card_y + 8;
     int cstep = (screen_height_ < 720) ? 18 : 20;
-    DrawText("CONTROLS", panel_x + 30, item_y, 16, {0, 220, 255, 255}); item_y += cstep + 2;
+    DrawText("CONTROLS", panel_x + 30, item_y, 16, theme_.hud_title); item_y += cstep + 2;
     DrawText("Move: Arrows", panel_x + 30, item_y, 14, RAYWHITE); item_y += cstep;
     DrawText("Pitch (X): Q / A", panel_x + 30, item_y, 14, RAYWHITE); item_y += cstep;
     DrawText("Yaw   (Y): W / S", panel_x + 30, item_y, 14, RAYWHITE); item_y += cstep;
@@ -519,7 +617,7 @@ void Renderer::draw(const Game& game, bool quit_requested, bool restart_requeste
     screen_height_ = GetScreenHeight();
 
     BeginDrawing();
-    ClearBackground({10, 12, 18, 255});
+    ClearBackground(theme_.background);
 
     // 1. Draw 3D scene (camera dynamically adapts to pit dimensions and centers in play area)
     update_camera(game.pit());
@@ -535,7 +633,10 @@ void Renderer::draw(const Game& game, bool quit_requested, bool restart_requeste
     draw_sparks(game);
     EndMode3D();
 
-    // 2. Draw 2D HUD sidebar on the right side
+    // 2. Draw Left Panel (Next Piece Preview + Pit Layer Tower)
+    draw_left_panel(game);
+
+    // 3. Draw 2D HUD sidebar on the right side
     draw_hud(game, quit_requested, restart_requested);
 
     EndDrawing();

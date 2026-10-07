@@ -122,6 +122,53 @@ make clean
 
 ---
 
+## Configuration & Custom Themes
+
+Game settings can be customized in [`config.json`](config.json):
+
+```json
+{
+  "width": 7,
+  "length": 7,
+  "depth": 12,
+  "window_width": 1024,
+  "window_height": 768,
+  "preview_next_piece": false,
+  "color_by_layer": true,
+  "theme": "blockout2",
+  "themes": {
+    "blockout2": { ... },
+    "contrast": { ... },
+    "dark": { ... },
+    "default": { ... }
+  }
+}
+```
+
+* **Pit Dimensions**: `width` (3–9), `length` (3–9), `depth` (6–18). Defaults to classic Flat Fun `7x7x12`.
+* **Window Size**: `window_width` and `window_height`. The game automatically adapts its 3D viewport and aspect ratio.
+* **Layer-Based Coloring**:
+  * `"color_by_layer": true`: When enabled (default), all blocks placed in the pit share the same color per depth layer ($z$). For a pit of depth 12, 12 distinct colors are used from floor to opening.
+  * `"color_by_layer": false`: Placed blocks retain their individual polyomino piece colors.
+* **Left Sidebar Panel (Preview & Pit Layer Tower)**:
+  * **Next Piece Preview**: Set `"preview_next_piece": true` to display the upcoming piece in the top card of the left panel (cleanly separated from the pit).
+  * **Pit Layer Tower**: Displays a vertical ladder representing every depth layer with its designated color, layer number, and live occupancy status (cube count and fill bar). Allows quick identification of block depths at a glance.
+  * **Centered 3D Pit**: The 3D tunnel is automatically centered in the play area between the left panel (180px) and the right HUD (300px), eliminating visual overlap.
+* **Color Themes**:
+  * Set `"theme"` to `"blockout2"` (original BlockOut II authentic palette), `"contrast"`, `"dark"`, `"default"`, or define your own custom theme name inside `"themes"`.
+  * If the specified theme or any property is omitted or malformed, the game safely falls back to hardcoded defaults.
+  * Customizable theme properties:
+    * `background`: Window background color (`#RRGGBB` or `#RRGGBBAA`).
+    * `cube_wireframe`: Outlines of placed cubes at the bottom (e.g. `#000000FF` for classic black contours or `#808890FF` for sleek gray borders).
+    * `active_wireframe`: Wireframe outline of the falling piece going down (e.g. `#FFFFFFFF` for pure white borders on all piece types; leave omitted or transparent to use per-piece colors).
+    * `pit_corner`, `pit_grid`, `pit_opening`, `pit_depth_rings`, `pit_floor_perimeter`, `pit_floor_grid`: Tunnel wireframe styling.
+    * `ghost_wireframe`, `ghost_alpha`: Landing silhouette outlines and opacity.
+    * `piece_colors`: Array of 8 hex colors for the polyomino pieces.
+    * `layer_colors`: Array of 12 hex colors for pit depth layers (ordered from floor up to opening).
+    * `hud_background`, `hud_border`, `hud_title`, `hud_score`, `hud_label`: UI panel colors.
+
+---
+
 ## Architecture
 
 ```
