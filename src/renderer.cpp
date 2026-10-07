@@ -296,7 +296,80 @@ void Renderer::draw_sparks(const Game& game) {
     DrawLine3D({p.x, p.y, p.z - radius}, {p.x, p.y, p.z + radius}, YELLOW);
 }
 
+void Renderer::draw_next_piece_preview(const Game& game) {
+    if (game.state() == GameState::GameOver) return;
+
+    const Piece& next = game.next_piece();
+    if (next.cubes.empty()) return;
+
+    int card_x = 24;
+    int card_y = (screen_height_ < 720) ? 20 : 30;
+    int card_w = 160;
+    int card_h = 160;
+
+    // Background card matching HUD styling
+    DrawRectangle(card_x, card_y, card_w, card_h, Fade({15, 20, 30, 255}, 0.88f));
+    DrawRectangleLines(card_x, card_y, card_w, card_h, {40, 100, 160, 200});
+
+    // Title
+    const char* title = "NEXT";
+    int title_sz = 16;
+    DrawText(title, card_x + (card_w - MeasureText(title, title_sz)) / 2, card_y + 12, title_sz, {0, 220, 255, 255});
+
+    // Calculate bounding box of next piece in default orientation
+    int min_x = 999, max_x = -999, min_y = 999, max_y = -999;
+    for (const auto& c : next.cubes) {
+        if (c.x < min_x) min_x = c.x;
+        if (c.x > max_x) max_x = c.x;
+        if (c.y < min_y) min_y = c.y;
+        if (c.y > max_y) max_y = c.y;
+    }
+    int pw = max_x - min_x + 1;
+    int ph = max_y - min_y + 1;
+
+    int cell_sz = 26;
+    int preview_area_top = card_y + 36;
+    int preview_area_h = card_h - 36 - 26;
+
+    int cx = card_x + card_w / 2;
+    int cy = preview_area_top + preview_area_h / 2;
+
+    int start_x = cx - (pw * cell_sz) / 2;
+    int start_y = cy - (ph * cell_sz) / 2;
+
+    Color col = get_piece_color(next.id, 0.9f);
+
+    for (const auto& c : next.cubes) {
+        int bx = start_x + (c.x - min_x) * cell_sz;
+        int by = start_y + (c.y - min_y) * cell_sz;
+
+        // Filled cube body
+        DrawRectangle(bx + 1, by + 1, cell_sz - 2, cell_sz - 2, col);
+
+        // Subtle 3D bevel / border highlight
+        DrawLine(bx + 1, by + 1, bx + cell_sz - 2, by + 1, Fade(WHITE, 0.6f));
+        DrawLine(bx + 1, by + 1, bx + 1, by + cell_sz - 2, Fade(WHITE, 0.6f));
+        DrawLine(bx + cell_sz - 2, by + 1, bx + cell_sz - 2, by + cell_sz - 2, Fade(BLACK, 0.4f));
+        DrawLine(bx + 1, by + cell_sz - 2, bx + cell_sz - 2, by + cell_sz - 2, Fade(BLACK, 0.4f));
+
+        DrawRectangleLines(bx, by, cell_sz, cell_sz, Fade({10, 15, 25, 255}, 0.8f));
+    }
+
+    // Piece name at bottom of card
+    int name_sz = 13;
+    DrawText(next.name.c_str(),
+             card_x + (card_w - MeasureText(next.name.c_str(), name_sz)) / 2,
+             card_y + card_h - 22,
+             name_sz,
+             {140, 170, 200, 220});
+}
+
 void Renderer::draw_hud(const Game& game, bool quit_requested, bool restart_requested) {
+    // Optional next piece preview on the left side of the pit
+    if (game.preview_next_piece()) {
+        draw_next_piece_preview(game);
+    }
+
     int panel_x = screen_width_ - 300;
     int panel_w = 300;
 

@@ -10,6 +10,7 @@ struct Config {
     int depth = 12;  // Range: [6, 18]
     int window_width = 1024;   // Range: [800, 7680]
     int window_height = 768;   // Range: [600, 4320], aspect ratio [0.75, 3.6]
+    bool preview_next_piece = false; // Next block preview on the left side (default: false)
 
     static Config load(const std::string& filename = "config.json");
     void save(const std::string& filename = "config.json") const;

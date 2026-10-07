@@ -3,5 +3,6 @@
   "length": 7,
   "depth": 12,
   "window_width": 1024,
-  "window_height": 768
+  "window_height": 768,
+  "preview_next_piece": false
 }

@@ -27,6 +27,8 @@ public:
     // Accessors for rendering
     const Pit& pit() const { return pit_; }
     const Piece& current_piece() const { return current_piece_; }
+    const Piece& next_piece() const { return next_piece_; }
+    bool preview_next_piece() const { return preview_next_piece_; }
     Vec3i piece_pos() const { return pos_; }
     Mat3i piece_rot() const { return rot_; }
     std::vector<Vec3i> get_active_cubes() const;
@@ -48,11 +50,13 @@ public:
 
 private:
     bool show_ghost_ = false;
+    bool preview_next_piece_ = false;
     AudioManager& audio_;
     Pit pit_;
     PieceManager piece_mgr_;
 
     Piece current_piece_{};
+    Piece next_piece_{};
     Vec3i pos_{};
     Mat3i rot_{};
 

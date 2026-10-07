@@ -27,12 +27,13 @@ A modern, streamlined 3D Tetris puzzle game rewritten in **C++20** using **Rayli
   * Local persistent high score (`highscore.txt`).
   * Full JSON configuration with comprehensive validation (`config.json`).
 * **Confirmation Dialogs**: Built-in modal confirmation dialogs for both **Quitting** (<kbd>ESC</kbd> / Window Close) and **Restarting** (<kbd>R</kbd> / <kbd>F2</kbd>) prevent accidental game interruption, with interactive mouse buttons and keyboard (<kbd>Y</kbd>/<kbd>Enter</kbd>/<kbd>N</kbd>/<kbd>ESC</kbd>) support.
+* **Optional Next Block Preview**: Sleek upcoming piece preview card on the left side of the pit, configurable via `config.json` (disabled by default).
 
 ---
 
 ## Configuration (`config.json`)
 
-You can customize the pit dimensions and window resolution by editing `config.json` in the application directory:
+You can customize the pit dimensions, window resolution, and next block preview by editing `config.json` in the application directory:
 
 ```json
 {
@@ -40,7 +41,8 @@ You can customize the pit dimensions and window resolution by editing `config.js
   "length": 7,
   "depth": 12,
   "window_width": 1024,
-  "window_height": 768
+  "window_height": 768,
+  "preview_next_piece": false
 }
 ```
 
@@ -53,8 +55,11 @@ You can customize the pit dimensions and window resolution by editing `config.js
 * **`window_width`**: Initial window width in pixels, range **[800, 7680]** (default: `1024`).
 * **`window_height`**: Initial window height in pixels, range **[600, 4320]** (default: `768`).
 
+### Preview Settings:
+* **`preview_next_piece`**: Toggle preview of the incoming block on the left side of the pit (`true` / `false`, default: `false`).
+
 ### Validation & Safety:
-* **Strict Typing**: All values must be integer numbers. Strings, floats, booleans, and null are rejected.
+* **Strict Typing**: Dimensions and resolutions must be integer numbers; `preview_next_piece` must be a boolean (`true`/`false`). Unrecognized types (strings, floats, null) are rejected with console warnings, keeping safe defaults.
 * **Range Checks**: Out-of-bounds dimensions (e.g. `width: 12` or `window_width: 500`) are rejected with console warnings, keeping safe defaults.
 * **Proportions & Aspect Ratio**: Validates that `aspect = window_width / window_height` is within the sensible range **[0.75, 3.6]**. Extreme slit resolutions (e.g. `4000x600` or `12x500`) are rejected and reset to `1024x768`.
 * **Auto-Creation**: If `config.json` is missing, the game creates it automatically with defaults.

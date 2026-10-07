@@ -148,13 +148,14 @@ void Config::save(const std::string& filename) const {
         out << "  \"length\": " << length << ",\n";
         out << "  \"depth\": " << depth << ",\n";
         out << "  \"window_width\": " << window_width << ",\n";
-        out << "  \"window_height\": " << window_height << "\n";
+        out << "  \"window_height\": " << window_height << ",\n";
+        out << "  \"preview_next_piece\": " << (preview_next_piece ? "true" : "false") << "\n";
         out << "}\n";
     }
 }
 
 Config Config::load(const std::string& filename) {
-    Config cfg; // default: width=7, length=7, depth=12
+    Config cfg; // default: width=7, length=7, depth=12, preview_next_piece=false
 
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -199,7 +200,26 @@ Config Config::load(const std::string& filename) {
 
         Token val = lexer.next_token();
 
-        // Type Verification
+        // Boolean setting: preview_next_piece
+        if (key == "preview_next_piece" || key == "preview_next_block" || key == "show_next_piece") {
+            if (val.type == TokenType::Boolean) {
+                cfg.preview_next_piece = (val.text == "true");
+            } else if (val.type == TokenType::IntNumber) {
+                cfg.preview_next_piece = (val.int_value != 0);
+            } else {
+                std::cerr << "Config error: Value for \"" << key
+                          << "\" must be a boolean (true/false), but got ";
+                if (val.type == TokenType::String) std::cerr << "string (\"" << val.text << "\")";
+                else if (val.type == TokenType::FloatNumber) std::cerr << "floating-point number (" << val.text << ")";
+                else if (val.type == TokenType::Null) std::cerr << "null";
+                else std::cerr << "'" << val.text << "'";
+                std::cerr << ". Value rejected, keeping default "
+                          << (cfg.preview_next_piece ? "true" : "false") << "." << std::endl;
+            }
+            continue;
+        }
+
+        // Type Verification for integer settings
         if (val.type != TokenType::IntNumber) {
             std::cerr << "Config error: Value for \"" << key
                       << "\" must be an integer, but got ";
@@ -266,7 +286,8 @@ Config Config::load(const std::string& filename) {
     }
 
     std::cout << "Configuration loaded: Pit " << cfg.width << "x" << cfg.length << " (length) x " << cfg.depth
-              << " (depth), Window " << cfg.window_width << "x" << cfg.window_height << std::endl;
+              << " (depth), Window " << cfg.window_width << "x" << cfg.window_height
+              << ", Next Piece Preview: " << (cfg.preview_next_piece ? "Enabled" : "Disabled") << std::endl;
     return cfg;
 }
 

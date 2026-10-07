@@ -6,7 +6,7 @@
 namespace blockout {
 
 Game::Game(AudioManager& audio, const Config& cfg)
-    : audio_(audio), pit_(cfg.width, cfg.length, cfg.depth) {
+    : preview_next_piece_(cfg.preview_next_piece), audio_(audio), pit_(cfg.width, cfg.length, cfg.depth) {
     load_high_score();
     reset();
 }
@@ -24,11 +24,13 @@ void Game::reset() {
 
     step_time_ = TIME_BASE * std::pow(TIME_LEVEL_FACTOR, static_cast<float>(level_));
 
+    next_piece_ = piece_mgr_.draw_next();
     spawn_piece();
 }
 
 void Game::spawn_piece() {
-    current_piece_ = piece_mgr_.draw_next();
+    current_piece_ = next_piece_;
+    next_piece_ = piece_mgr_.draw_next();
     rot_ = Mat3i::identity();
 
     // Center piece at the top opening

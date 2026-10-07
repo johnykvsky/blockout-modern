@@ -32,6 +32,7 @@ private:
     void draw_active_piece(const Game& game);
     void draw_ghost_piece(const Game& game);
     void draw_sparks(const Game& game);
+    void draw_next_piece_preview(const Game& game);
     void draw_hud(const Game& game, bool quit_requested = false, bool restart_requested = false);
 
     Color get_piece_color(int id, float alpha = 1.0f) const;
