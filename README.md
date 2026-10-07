@@ -2,7 +2,7 @@
 
 A modern, streamlined 3D Tetris puzzle game rewritten in **C++20** using **Raylib**, based on the classic **BlockOut II**.
 
-![Screenshot](https://raw.githubusercontent.com/johnykvsky/blockout-modern/master/blockout_modern.jpg)
+![Screenshot](https://raw.githubusercontent.com/johnykvsky/blockout-modern/master/blockout-modern.jpg)
 
 ---
 
@@ -13,13 +13,13 @@ A modern, streamlined 3D Tetris puzzle game rewritten in **C++20** using **Rayli
 * **Pure Flat Set**: Features the authentic 8 planar polyomino pieces (Monomino, Domino, Trominoes, Tetrominoes) rotating freely in 3D.
 * **Seamless Wireframe Rendering**: Active pieces and ghost shadows render as clean, unified 3D wireframe polycubes showing **only exterior outline borders** — internal seams and dividing lines between touching unit cubes are automatically eliminated.
 * **Dynamic & Resizable Window**:
-  * Freely resizable window with minimum size enforcement ($800 \times 600$).
+  * Freely resizable window with minimum size enforcement (800x600).
   * Responsive 3D camera that dynamically frames and centers the pit in the play area across any resolution or aspect ratio.
   * Toggle borderless Fullscreen anytime with <kbd>F11</kbd> or <kbd>Alt</kbd> + <kbd>Enter</kbd>.
   * Window size is automatically remembered and saved to `config.json` when resized.
 * **Authentic Physics & Scoring**:
-  * 3D Pit grid (default $7 \times 7 \times 12$, fully customizable).
-  * Pitch ($X$), Yaw ($Y$), and Roll ($Z$) 3D rotations with wall-kick compensation.
+  * 3D Pit grid (default 7x7x12, fully customizable).
+  * Pitch (X), Yaw (Y), and Roll (Z) 3D rotations with wall-kick compensation.
   * Layer collapse and authentic BlockOut multi-line scoring formulas.
   * Empty Pit ("Flush") clearing bonuses.
   * Original retro sound effects (`blub.wav`, `wozz.wav`, `tchh.wav`, `line.wav`, `empty.wav`, `hit.wav`, `level.wav`).
@@ -55,7 +55,7 @@ You can customize the pit dimensions and window resolution by editing `config.js
 ### Validation & Safety:
 * **Strict Typing**: All values must be integer numbers. Strings, floats, booleans, and null are rejected.
 * **Range Checks**: Out-of-bounds dimensions (e.g. `width: 12` or `window_width: 500`) are rejected with console warnings, keeping safe defaults.
-* **Proportions & Aspect Ratio**: Validates that $\text{aspect} = \text{window\_width} / \text{window\_height}$ is within the sensible range **[0.75, 3.6]**. Extreme slit resolutions (e.g. `4000x600` or `12x500`) are rejected and reset to `1024x768`.
+* **Proportions & Aspect Ratio**: Validates that `aspect = window_width / window_height` is within the sensible range **[0.75, 3.6]**. Extreme slit resolutions (e.g. `4000x600` or `12x500`) are rejected and reset to `1024x768`.
 * **Auto-Creation**: If `config.json` is missing, the game creates it automatically with defaults.
 * **Auto-Persistence**: Resizing the window with your mouse updates `config.json` automatically, preserving your layout for subsequent sessions.
 
@@ -66,9 +66,9 @@ You can customize the pit dimensions and window resolution by editing `config.js
 | Key | Action |
 | :--- | :--- |
 | **Arrow Keys** (or Numpad 4/8/6/2) | Move Left / Up / Right / Down |
-| **Q / A** (or Numpad 7/1) | Pitch rotation ($\pm 90^\circ$ around $X$-axis) |
-| **W / S** (or Numpad 9/3) | Yaw rotation ($\pm 90^\circ$ around $Y$-axis) |
-| **E / D** (or Numpad / and *) | Roll rotation ($\pm 90^\circ$ around $Z$-axis) |
+| **Q / A** (or Numpad 7/1) | Pitch rotation (±90° around X-axis) |
+| **W / S** (or Numpad 9/3) | Yaw rotation (±90° around Y-axis) |
+| **E / D** (or Numpad / and *) | Roll rotation (±90° around Z-axis) |
 | **Space** (or Numpad 0) | Hard Drop (instantly drops and locks piece) |
 | **G** | Toggle Shadow / Ghost Piece (ON / OFF) |
 | **F11** or **Alt + Enter** | Toggle Fullscreen |
