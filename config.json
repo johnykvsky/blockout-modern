@@ -5,7 +5,14 @@
   "window_width": 1428,
   "window_height": 768,
   "preview_next_piece": true,
-  "color_by_layer": true,
+  "color_by_layer": false,
+  "difficulty": "easy",
+  "step_times": {
+    "easy": 5.51,
+    "normal": 2.26,
+    "hard": 0.92,
+    "extreme": 0.38
+  },
   "theme": "default",
   "themes": {
     "blockout2": {

@@ -91,6 +91,44 @@ enum class GameState {
     GameOver
 };
 
+enum class Difficulty {
+    Easy = 0,
+    Normal = 1,
+    Hard = 2,
+    Extreme = 3
+};
+
+inline constexpr int DIFFICULTY_COUNT = 4;
+
+inline int difficulty_start_level(Difficulty d) {
+    switch (d) {
+        case Difficulty::Easy: return 0;
+        case Difficulty::Normal: return 2;
+        case Difficulty::Hard: return 4;
+        case Difficulty::Extreme: return 6;
+    }
+    return 0;
+}
+
+inline std::string difficulty_name(Difficulty d) {
+    switch (d) {
+        case Difficulty::Easy: return "Easy";
+        case Difficulty::Normal: return "Normal";
+        case Difficulty::Hard: return "Hard";
+        case Difficulty::Extreme: return "Extreme";
+    }
+    return "Easy";
+}
+
+inline Difficulty parse_difficulty(const std::string& str) {
+    std::string s = str;
+    for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (s == "normal" || s == "med" || s == "medium") return Difficulty::Normal;
+    if (s == "hard") return Difficulty::Hard;
+    if (s == "extreme" || s == "insane") return Difficulty::Extreme;
+    return Difficulty::Easy;
+}
+
 // Original BlockOut score factors
 inline constexpr std::array<float, 11> P_LEVEL_FACTOR = {
     0.066990f, 0.139195f, 0.219800f, 0.308444f, 0.403897f,

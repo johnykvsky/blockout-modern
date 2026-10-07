@@ -3,6 +3,8 @@
 #include "game.hpp"
 #include "renderer.hpp"
 #include "config.hpp"
+#include "icon_data.hpp"
+#include <vector>
 
 using namespace blockout;
 
@@ -14,6 +16,38 @@ int main() {
     SetWindowMinSize(800, 600);
     SetExitKey(KEY_NULL); // Disable automatic ESC exit to allow confirmation dialog
     SetTargetFPS(60);
+
+    // Set application window icons (multi-resolution for crisp titlebar, dock & taskbar display)
+    std::vector<Image> icons;
+    const char* icon_paths[] = {
+        "assets/icon.png",
+        "assets/icon_128.png",
+        "assets/icon_64.png",
+        "assets/icon_48.png",
+        "assets/icon_32.png",
+        "assets/icon_16.png"
+    };
+    for (const char* path : icon_paths) {
+        if (FileExists(path)) {
+            Image img = LoadImage(path);
+            if (img.data != nullptr) {
+                icons.push_back(img);
+            }
+        }
+    }
+    if (!icons.empty()) {
+        SetWindowIcons(icons.data(), static_cast<int>(icons.size()));
+        for (auto& img : icons) {
+            UnloadImage(img);
+        }
+    } else {
+        // Fallback: embedded 32x32 RGBA icon ensures an authentic icon even without assets folder
+        Image fallback_img = LoadImageFromMemory(".png", EMBEDDED_ICON_PNG, static_cast<int>(EMBEDDED_ICON_PNG_LEN));
+        if (fallback_img.data != nullptr) {
+            SetWindowIcon(fallback_img);
+            UnloadImage(fallback_img);
+        }
+    }
 
     AudioManager audio;
     Game game(audio, config);

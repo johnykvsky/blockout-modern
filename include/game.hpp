@@ -36,8 +36,13 @@ public:
 
     GameState state() const { return state_; }
     int score() const { return score_; }
-    int high_score() const { return high_score_; }
+    int high_score() const { return high_scores_[static_cast<size_t>(difficulty_)]; }
+    int high_score(Difficulty d) const { return high_scores_[static_cast<size_t>(d)]; }
+    Difficulty difficulty() const { return difficulty_; }
     int level() const { return level_; }
+    int start_level() const { return start_level_; }
+    float step_time() const { return step_time_; }
+    float initial_step_time() const { return initial_step_time_; }
     int lines_cleared() const { return lines_cleared_; }
     int cubes_placed() const { return cubes_placed_; }
 
@@ -61,6 +66,11 @@ private:
     Mat3i rot_{};
 
     GameState state_ = GameState::Playing;
+    Difficulty difficulty_ = Difficulty::Easy;
+    int start_level_ = 0;
+    StepTimes step_times_{};
+    float initial_step_time_ = 5.51f;
+    std::array<int, DIFFICULTY_COUNT> high_scores_ = {0, 0, 0, 0};
 
     float fall_timer_ = 0.0f;
     float step_time_ = 1.0f;
@@ -68,7 +78,6 @@ private:
     bool was_dropped_ = false;
 
     int score_ = 0;
-    int high_score_ = 0;
     int level_ = 0;
     int lines_cleared_ = 0;
     int cubes_placed_ = 0;

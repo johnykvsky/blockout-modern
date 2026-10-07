@@ -79,8 +79,49 @@ vcpkg_installed/
 # ==========================================
 .DS_Store
 Thumbs.db
+.directory
 *~
 *.swp
 *.swo
+*.kate-swp
 .vscode/
 .idea/
+*.code-workspace
+
+# ==========================================
+# Language server and IDE cache
+# ==========================================
+.clangd/
+CMakeUserPresets.json
+
+# ==========================================
+# Scripts and utility tools
+# ==========================================
+scripts/
+
+# ==========================================
+# Python bytecode and virtual environments
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+
+# ==========================================
+# Core dumps, profiling, and crash logs
+# ==========================================
+core
+core.*
+vgcore.*
+gmon.out
+*.gcda
+*.gcno
+*.gcov
+screenshot*.png
+*.orig
+*.rej
+

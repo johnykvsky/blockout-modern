@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=BlockOut Modern
+GenericName=3D Block Puzzle Game
+Comment=Authentic 3D BlockOut puzzle game in C++20
+Exec=blockout
+Icon=assets/icon.png
+Terminal=false
+Categories=Game;LogicGame;
+Keywords=blockout;tetris;3d;puzzle;polyomino;polycube;
+StartupNotify=true
+StartupWMClass=BlockOut 3D (Flat)

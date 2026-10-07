@@ -24,8 +24,10 @@ A modern, streamlined 3D Tetris puzzle game rewritten in **C++20** using **Rayli
   * Empty Pit ("Flush") clearing bonuses.
   * Original retro sound effects (`blub.wav`, `wozz.wav`, `tchh.wav`, `line.wav`, `empty.wav`, `hit.wav`, `level.wav`).
   * Toggleable Ghost piece shadow on the pit floor (<kbd>G</kbd>).
-  * Local persistent high score (`highscore.txt`).
+  * Local persistent high score per difficulty tier (`highscore.txt`).
   * Full JSON configuration with comprehensive validation (`config.json`).
+* **4 Authentic Difficulty Levels**: Configurable speed presets mirroring BlockOut II starting levels (Easy = Level 0, Normal = Level 2, Hard = Level 4, Extreme = Level 6) with individual high-score records for each difficulty.
+* **Custom Application Icon**: Authentic 3D glowing isometric polycube icon inside a perspective neon wireframe tunnel, with multi-resolution scaling (16x16 up to 256x256) and embedded fallback support.
 * **Confirmation Dialogs**: Built-in modal confirmation dialogs for both **Quitting** (<kbd>ESC</kbd> / Window Close) and **Restarting** (<kbd>R</kbd> / <kbd>F2</kbd>) prevent accidental game interruption, with interactive mouse buttons and keyboard (<kbd>Y</kbd>/<kbd>Enter</kbd>/<kbd>N</kbd>/<kbd>ESC</kbd>) support.
 * **Optional Next Block Preview**: Sleek upcoming piece preview card on the left side of the pit, configurable via `config.json` (disabled by default).
 
@@ -33,7 +35,7 @@ A modern, streamlined 3D Tetris puzzle game rewritten in **C++20** using **Rayli
 
 ## Configuration (`config.json`)
 
-You can customize the pit dimensions, window resolution, and next block preview by editing `config.json` in the application directory:
+You can customize the pit dimensions, window resolution, difficulty, and next block preview by editing `config.json` in the application directory:
 
 ```json
 {
@@ -42,7 +44,15 @@ You can customize the pit dimensions, window resolution, and next block preview 
   "depth": 12,
   "window_width": 1024,
   "window_height": 768,
-  "preview_next_piece": false
+  "preview_next_piece": false,
+  "color_by_layer": true,
+  "difficulty": "easy",
+  "step_times": {
+    "easy": 5.51,
+    "normal": 2.26,
+    "hard": 0.92,
+    "extreme": 0.38
+  }
 }
 ```
 
@@ -51,19 +61,38 @@ You can customize the pit dimensions, window resolution, and next block preview 
 * **`length`**: Pit length/height (vertical rows), range **[3, 7]** (default: `7`).
 * **`depth`**: Pit depth (layers into the screen), range **[6, 18]** (default: `12`).
 
+### Difficulty & Initial Step Times:
+* **`difficulty`**: Select active game difficulty preset (`"easy"`, `"normal"`, `"hard"`, `"extreme"`, default: `"easy"`).
+* **`step_times`**: Custom initial step time in seconds for each tier. Valid range: **[0.1, 20.0]** seconds.
+
+| Difficulty | Default Start Level | Default Initial Step Time | Multiplier / Characteristics |
+| :--- | :---: | :---: | :--- |
+| **`easy`** | Level 0 | **5.51 s** | Relaxed pace, default starting speed |
+| **`normal`** | Level 2 | **2.26 s** | Moderate pace (~2.4x faster fall speed) |
+| **`hard`** | Level 4 | **0.92 s** | Fast reflexes required (~6x faster fall speed) |
+| **`extreme`** | Level 6 | **0.38 s** | Blazing speed for master players (~14.5x faster fall speed) |
+
+> [!NOTE]
+> Speed follows the authentic BlockOut II progression formula: $T_{\text{step}} = T_{\text{initial}} \times 0.64^{\Delta\text{level}}$. Scoring formulas also reward higher levels proportionally, and high scores are tracked independently for each difficulty in `highscore.txt`.
+
 ### Window Settings:
 * **`window_width`**: Initial window width in pixels, range **[800, 7680]** (default: `1024`).
 * **`window_height`**: Initial window height in pixels, range **[600, 4320]** (default: `768`).
 
-### Preview Settings:
+### Preview & Coloring:
 * **`preview_next_piece`**: Toggle preview of the incoming block on the left side of the pit (`true` / `false`, default: `false`).
+* **`color_by_layer`**: Color placed cubes by pit depth layer (`true` / `false`, default: `true`).
 
 ### Validation & Safety:
-* **Strict Typing**: Dimensions and resolutions must be integer numbers; `preview_next_piece` must be a boolean (`true`/`false`). Unrecognized types (strings, floats, null) are rejected with console warnings, keeping safe defaults.
-* **Range Checks**: Out-of-bounds dimensions (e.g. `width: 12` or `window_width: 500`) are rejected with console warnings, keeping safe defaults.
-* **Proportions & Aspect Ratio**: Validates that `aspect = window_width / window_height` is within the sensible range **[0.75, 3.6]**. Extreme slit resolutions (e.g. `4000x600` or `12x500`) are rejected and reset to `1024x768`.
-* **Auto-Creation**: If `config.json` is missing, the game creates it automatically with defaults.
-* **Auto-Persistence**: Resizing the window with your mouse updates `config.json` automatically, preserving your layout for subsequent sessions.
+* **Strict Typing**:
+  * Pit dimensions and window resolutions must be integers; non-integer types are rejected.
+  * `preview_next_piece` and `color_by_layer` must be strict booleans (`true` / `false`). Numbers or strings (e.g. `1` or `"yes"`) are rejected with errors.
+  * Difficulty must be one of `"easy"`, `"normal"`, `"hard"`, `"extreme"`.
+* **Step Time Range Checks**: Each step time in `step_times` must be a number between **0.1** and **20.0** seconds. Values outside this range or invalid types are rejected and fall back to hardcoded defaults.
+* **Color Format Validation**: All theme colors must be valid hexadecimal strings starting with `#` followed by 3, 6, or 8 hex digits (`#RGB`, `#RRGGBB`, `#RRGGBBAA`). Plain color names (e.g. `"red"`) or non-hex strings are rejected with descriptive console error messages, falling back to theme defaults.
+* **Alpha Range Verification**: `ghost_alpha` must be a floating-point number in range **[0.0, 1.0]**.
+* **Window Aspect Ratio**: Validates that `aspect = window_width / window_height` is within the sensible range **[0.75, 3.6]**. Extreme slit resolutions (e.g. `4000x600` or `12x500`) are rejected and reset to `1024x768`.
+* **Auto-Creation & Persistence**: If `config.json` is missing, it is created with defaults. Window resizing automatically preserves dimensions across sessions.
 
 ---
 
@@ -135,6 +164,13 @@ Game settings can be customized in [`config.json`](config.json):
   "window_height": 768,
   "preview_next_piece": false,
   "color_by_layer": true,
+  "difficulty": "easy",
+  "step_times": {
+    "easy": 5.51,
+    "normal": 2.26,
+    "hard": 0.92,
+    "extreme": 0.38
+  },
   "theme": "blockout2",
   "themes": {
     "blockout2": { ... },
@@ -174,10 +210,12 @@ Game settings can be customized in [`config.json`](config.json):
 ```
 blockout-modern/
 ├── assets/
+│   ├── icon*.png     # Multi-resolution application icons (16x16 to 256x256)
 │   └── sounds/       # Authentic WAV sound effects
 ├── include/
 │   ├── types.hpp     # Vec3i, Mat3i, GameState, scoring constants & factors
-│   ├── config.hpp    # Config struct definition
+│   ├── config.hpp    # Config struct definition & hex validation helpers
+│   ├── icon_data.hpp # Embedded PNG icon fallback
 │   ├── pieces.hpp    # 8 Flat pieces definitions & bag randomizer
 │   ├── pit.hpp       # 3D pit grid, layer clearing & collision detection
 │   ├── game.hpp      # Game loop state machine, scoring & gravity timer
@@ -190,12 +228,13 @@ blockout-modern/
 │   ├── game.cpp
 │   ├── renderer.cpp  # Responsive camera framing & unified outline geometry
 │   ├── audio.cpp
-│   └── main.cpp      # Window setup, resizability, DAS input handling
+│   └── main.cpp      # Window setup, icon setup, resizability, DAS input handling
 ├── third_party/
 │   └── raylib/       # Raylib dependency (empty in repo, fetched via 'make deps')
 ├── Makefile
-├── config.json       # User settings (pit size & window resolution)
-├── highscore.txt     # Local persistent high score
+├── blockout.desktop  # Linux desktop application launcher
+├── config.json       # User settings (pit size, difficulty, step times & theme)
+├── highscore.txt     # Local persistent high scores per difficulty
 ├── .gitignore        # Git ignore rules for build artifacts
 └── LICENSE.md        # GNU General Public License v2.0 or later
 ```

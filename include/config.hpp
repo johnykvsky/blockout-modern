@@ -1,11 +1,29 @@
 #pragma once
 
 #include "raylib.h"
+#include "types.hpp"
 #include <string>
 #include <vector>
 #include <map>
 
 namespace blockout {
+
+struct StepTimes {
+    float easy = 5.51f;    // Range: [0.1, 20.0]
+    float normal = 2.26f;  // Range: [0.1, 20.0]
+    float hard = 0.92f;    // Range: [0.1, 20.0]
+    float extreme = 0.38f; // Range: [0.1, 20.0]
+
+    float get(Difficulty d) const {
+        switch (d) {
+            case Difficulty::Easy: return easy;
+            case Difficulty::Normal: return normal;
+            case Difficulty::Hard: return hard;
+            case Difficulty::Extreme: return extreme;
+        }
+        return easy;
+    }
+};
 
 struct ColorTheme {
     std::string name = "default";
@@ -51,6 +69,8 @@ struct Config {
     int window_height = 768;   // Range: [600, 4320], aspect ratio [0.75, 3.6]
     bool preview_next_piece = false; // Next block preview on the left side (default: false)
     bool color_by_layer = true;      // Color placed cubes by layer depth (default: true)
+    std::string difficulty = "easy"; // Difficulty: easy, normal, hard, extreme (default: easy)
+    StepTimes step_times;            // Initial fall step times in seconds per tier [0.1, 20.0]
 
     std::string theme = "default";
     std::map<std::string, ColorTheme> themes;
@@ -61,5 +81,10 @@ struct Config {
     static Config load(const std::string& filename = "config.json");
     void save(const std::string& filename = "config.json") const;
 };
+
+// Validation & Color helpers
+bool is_valid_hex_color(const std::string& str);
+Color parse_hex_color(const std::string& str, Color fallback = WHITE);
+std::string color_to_hex(Color c);
 
 } // namespace blockout

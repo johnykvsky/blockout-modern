@@ -162,6 +162,8 @@ void skip_json_value(JsonLexer& lexer, const Token& tok) {
     }
 }
 
+} // namespace
+
 Color parse_hex_color(const std::string& str, Color fallback) {
     std::string s = str;
     if (!s.empty() && s[0] == '#') {
@@ -197,6 +199,39 @@ Color parse_hex_color(const std::string& str, Color fallback) {
     return fallback;
 }
 
+bool is_valid_hex_color(const std::string& str) {
+    if (str.empty() || str[0] != '#') return false;
+    size_t len = str.size() - 1;
+    if (len != 3 && len != 6 && len != 8) return false;
+    for (size_t i = 1; i < str.size(); ++i) {
+        if (!std::isxdigit(static_cast<unsigned char>(str[i]))) return false;
+    }
+    return true;
+}
+
+Color parse_validated_hex_color(const Token& tok, const std::string& theme_name, const std::string& prop_name, Color fallback) {
+    if (tok.type != TokenType::String) {
+        std::cerr << "Config error: Value for '" << prop_name << "' in theme \"" << theme_name
+                  << "\" must be a hex color string (e.g. \"#RRGGBB\"), got ";
+        if (tok.type == TokenType::IntNumber || tok.type == TokenType::FloatNumber) std::cerr << "number (" << tok.text << ")";
+        else if (tok.type == TokenType::Boolean) std::cerr << "boolean (" << tok.text << ")";
+        else if (tok.type == TokenType::Null) std::cerr << "null";
+        else std::cerr << "'" << tok.text << "'";
+        std::cerr << ". Value rejected, keeping default." << std::endl;
+        return fallback;
+    }
+
+    if (!is_valid_hex_color(tok.text)) {
+        std::cerr << "Config error: Invalid hex color format \"" << tok.text << "\" for '" << prop_name
+                  << "' in theme \"" << theme_name
+                  << "\". Colors must start with '#' followed by 3, 6, or 8 hex digits (e.g. \"#00FF00\" or \"#00FF00FF\")."
+                  << " Value rejected, keeping default." << std::endl;
+        return fallback;
+    }
+
+    return parse_hex_color(tok.text, fallback);
+}
+
 std::string color_to_hex(Color c) {
     char buf[16];
     if (c.a == 255) {
@@ -206,8 +241,6 @@ std::string color_to_hex(Color c) {
     }
     return std::string(buf);
 }
-
-} // namespace
 
 ColorTheme ColorTheme::default_theme() {
     ColorTheme t;
@@ -377,6 +410,13 @@ void Config::save(const std::string& filename) const {
     out << "  \"window_height\": " << window_height << ",\n";
     out << "  \"preview_next_piece\": " << (preview_next_piece ? "true" : "false") << ",\n";
     out << "  \"color_by_layer\": " << (color_by_layer ? "true" : "false") << ",\n";
+    out << "  \"difficulty\": \"" << difficulty << "\",\n";
+    out << "  \"step_times\": {\n";
+    out << "    \"easy\": " << step_times.easy << ",\n";
+    out << "    \"normal\": " << step_times.normal << ",\n";
+    out << "    \"hard\": " << step_times.hard << ",\n";
+    out << "    \"extreme\": " << step_times.extreme << "\n";
+    out << "  },\n";
     out << "  \"theme\": \"" << theme << "\",\n";
     out << "  \"themes\": {\n";
 
@@ -467,16 +507,16 @@ Config Config::load(const std::string& filename) {
         Token val = lexer.next_token();
 
         // Boolean setting: preview_next_piece
+        // Boolean setting: preview_next_piece
         if (key == "preview_next_piece" || key == "preview_next_block" || key == "show_next_piece") {
             if (val.type == TokenType::Boolean) {
                 cfg.preview_next_piece = (val.text == "true");
-            } else if (val.type == TokenType::IntNumber) {
-                cfg.preview_next_piece = (val.int_value != 0);
             } else {
                 std::cerr << "Config error: Value for \"" << key
                           << "\" must be a boolean (true/false), but got ";
                 if (val.type == TokenType::String) std::cerr << "string (\"" << val.text << "\")";
                 else if (val.type == TokenType::FloatNumber) std::cerr << "floating-point number (" << val.text << ")";
+                else if (val.type == TokenType::IntNumber) std::cerr << "integer (" << val.text << ")";
                 else if (val.type == TokenType::Null) std::cerr << "null";
                 else std::cerr << "'" << val.text << "'";
                 std::cerr << ". Value rejected, keeping default "
@@ -489,12 +529,101 @@ Config Config::load(const std::string& filename) {
         if (key == "color_by_layer" || key == "layer_coloring") {
             if (val.type == TokenType::Boolean) {
                 cfg.color_by_layer = (val.text == "true");
-            } else if (val.type == TokenType::IntNumber) {
-                cfg.color_by_layer = (val.int_value != 0);
             } else {
                 std::cerr << "Config error: Value for \"" << key
-                          << "\" must be a boolean (true/false). Keeping default "
+                          << "\" must be a boolean (true/false), but got ";
+                if (val.type == TokenType::String) std::cerr << "string (\"" << val.text << "\")";
+                else if (val.type == TokenType::FloatNumber) std::cerr << "floating-point number (" << val.text << ")";
+                else if (val.type == TokenType::IntNumber) std::cerr << "integer (" << val.text << ")";
+                else if (val.type == TokenType::Null) std::cerr << "null";
+                else std::cerr << "'" << val.text << "'";
+                std::cerr << ". Value rejected, keeping default "
                           << (cfg.color_by_layer ? "true" : "false") << "." << std::endl;
+            }
+            continue;
+        }
+
+        // Difficulty setting: easy, normal, hard, extreme
+        if (key == "difficulty") {
+            if (val.type == TokenType::String) {
+                std::string d_str = val.text;
+                for (char& c : d_str) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                if (d_str == "easy" || d_str == "normal" || d_str == "hard" || d_str == "extreme") {
+                    cfg.difficulty = d_str;
+                } else {
+                    std::cerr << "Config error: Unknown difficulty \"" << val.text
+                              << "\". Valid options: easy, normal, hard, extreme. Defaulting to easy." << std::endl;
+                    cfg.difficulty = "easy";
+                }
+            } else {
+                std::cerr << "Config error: Value for 'difficulty' must be a string name, got ";
+                if (val.type == TokenType::IntNumber || val.type == TokenType::FloatNumber) std::cerr << "number (" << val.text << ")";
+                else if (val.type == TokenType::Boolean) std::cerr << "boolean (" << val.text << ")";
+                else if (val.type == TokenType::Null) std::cerr << "null";
+                else std::cerr << "'" << val.text << "'";
+                std::cerr << ". Value rejected, keeping default \"easy\"." << std::endl;
+            }
+            continue;
+        }
+
+        // Step times configuration: object { "easy": 5.51, "normal": 2.26, "hard": 0.92, "extreme": 0.38 }
+        if (key == "step_times" || key == "difficulty_step_times" || key == "initial_step_times") {
+            if (val.type != TokenType::BraceOpen) {
+                std::cerr << "Config error: '" << key << "' must be an object { \"easy\": ..., \"normal\": ..., ... }." << std::endl;
+                skip_json_value(lexer, val);
+                continue;
+            }
+
+            while (true) {
+                Token sub_tok = lexer.next_token();
+                if (sub_tok.type == TokenType::BraceClose || sub_tok.type == TokenType::EndOfFile) {
+                    break;
+                }
+                if (sub_tok.type == TokenType::Comma) continue;
+                if (sub_tok.type != TokenType::String) {
+                    std::cerr << "Config warning: Expected difficulty tier name in '" << key << "', got '" << sub_tok.text << "'." << std::endl;
+                    continue;
+                }
+
+                std::string sub_key = sub_tok.text;
+                for (char& c : sub_key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+                Token sub_colon = lexer.next_token();
+                if (sub_colon.type != TokenType::Colon) continue;
+
+                Token sub_val = lexer.next_token();
+                if (sub_val.type != TokenType::FloatNumber && sub_val.type != TokenType::IntNumber) {
+                    std::cerr << "Config error: Step time for '" << sub_key << "' must be a number, but got ";
+                    if (sub_val.type == TokenType::String) std::cerr << "string (\"" << sub_val.text << "\")";
+                    else if (sub_val.type == TokenType::Boolean) std::cerr << "boolean (" << sub_val.text << ")";
+                    else if (sub_val.type == TokenType::Null) std::cerr << "null";
+                    else std::cerr << "'" << sub_val.text << "'";
+                    std::cerr << ". Value rejected, keeping default." << std::endl;
+                    continue;
+                }
+
+                float fval = 0.0f;
+                try {
+                    fval = std::stof(sub_val.text);
+                } catch (...) {
+                    std::cerr << "Config error: Failed to parse step time for '" << sub_key << "' from '" << sub_val.text << "'." << std::endl;
+                    continue;
+                }
+
+                if (fval < 0.1f || fval > 20.0f) {
+                    std::cerr << "Config error: Step time for '" << sub_key << "' must be between 0.1 and 20.0 seconds, got "
+                              << fval << "s. Value rejected, keeping default." << std::endl;
+                    continue;
+                }
+
+                if (sub_key == "easy") cfg.step_times.easy = fval;
+                else if (sub_key == "normal" || sub_key == "medium" || sub_key == "med") cfg.step_times.normal = fval;
+                else if (sub_key == "hard") cfg.step_times.hard = fval;
+                else if (sub_key == "extreme" || sub_key == "insane") cfg.step_times.extreme = fval;
+                else {
+                    std::cerr << "Config warning: Unknown difficulty tier '" << sub_key
+                              << "' in '" << key << "'. Valid options: easy, normal, hard, extreme." << std::endl;
+                }
             }
             continue;
         }
@@ -504,7 +633,12 @@ Config Config::load(const std::string& filename) {
             if (val.type == TokenType::String) {
                 cfg.theme = val.text;
             } else {
-                std::cerr << "Config error: Value for 'theme' must be a string name, got '" << val.text << "'." << std::endl;
+                std::cerr << "Config error: Value for 'theme' must be a string name, got ";
+                if (val.type == TokenType::IntNumber || val.type == TokenType::FloatNumber) std::cerr << "number (" << val.text << ")";
+                else if (val.type == TokenType::Boolean) std::cerr << "boolean (" << val.text << ")";
+                else if (val.type == TokenType::Null) std::cerr << "null";
+                else std::cerr << "'" << val.text << "'";
+                std::cerr << ". Value rejected, keeping default \"default\"." << std::endl;
             }
             continue;
         }
@@ -557,56 +691,101 @@ Config Config::load(const std::string& filename) {
                     if (prop_colon.type != TokenType::Colon) continue;
 
                     Token prop_val = lexer.next_token();
-                    if (prop_name == "background") th.background = parse_hex_color(prop_val.text, th.background);
-                    else if (prop_name == "pit_corner") th.pit_corner = parse_hex_color(prop_val.text, th.pit_corner);
-                    else if (prop_name == "pit_grid") th.pit_grid = parse_hex_color(prop_val.text, th.pit_grid);
-                    else if (prop_name == "pit_opening") th.pit_opening = parse_hex_color(prop_val.text, th.pit_opening);
-                    else if (prop_name == "pit_depth_rings") th.pit_depth_rings = parse_hex_color(prop_val.text, th.pit_depth_rings);
-                    else if (prop_name == "pit_floor_perimeter") th.pit_floor_perimeter = parse_hex_color(prop_val.text, th.pit_floor_perimeter);
-                    else if (prop_name == "pit_floor_grid") th.pit_floor_grid = parse_hex_color(prop_val.text, th.pit_floor_grid);
-                    else if (prop_name == "cube_wireframe") th.cube_wireframe = parse_hex_color(prop_val.text, th.cube_wireframe);
-                    else if (prop_name == "active_wireframe") th.active_wireframe = parse_hex_color(prop_val.text, th.active_wireframe);
-                    else if (prop_name == "ghost_wireframe") th.ghost_wireframe = parse_hex_color(prop_val.text, th.ghost_wireframe);
+                    if (prop_name == "background") th.background = parse_validated_hex_color(prop_val, theme_name, prop_name, th.background);
+                    else if (prop_name == "pit_corner") th.pit_corner = parse_validated_hex_color(prop_val, theme_name, prop_name, th.pit_corner);
+                    else if (prop_name == "pit_grid") th.pit_grid = parse_validated_hex_color(prop_val, theme_name, prop_name, th.pit_grid);
+                    else if (prop_name == "pit_opening") th.pit_opening = parse_validated_hex_color(prop_val, theme_name, prop_name, th.pit_opening);
+                    else if (prop_name == "pit_depth_rings") th.pit_depth_rings = parse_validated_hex_color(prop_val, theme_name, prop_name, th.pit_depth_rings);
+                    else if (prop_name == "pit_floor_perimeter") th.pit_floor_perimeter = parse_validated_hex_color(prop_val, theme_name, prop_name, th.pit_floor_perimeter);
+                    else if (prop_name == "pit_floor_grid") th.pit_floor_grid = parse_validated_hex_color(prop_val, theme_name, prop_name, th.pit_floor_grid);
+                    else if (prop_name == "cube_wireframe") th.cube_wireframe = parse_validated_hex_color(prop_val, theme_name, prop_name, th.cube_wireframe);
+                    else if (prop_name == "active_wireframe") th.active_wireframe = parse_validated_hex_color(prop_val, theme_name, prop_name, th.active_wireframe);
+                    else if (prop_name == "ghost_wireframe") th.ghost_wireframe = parse_validated_hex_color(prop_val, theme_name, prop_name, th.ghost_wireframe);
+                    else if (prop_name == "hud_background") th.hud_background = parse_validated_hex_color(prop_val, theme_name, prop_name, th.hud_background);
+                    else if (prop_name == "hud_border") th.hud_border = parse_validated_hex_color(prop_val, theme_name, prop_name, th.hud_border);
+                    else if (prop_name == "hud_title") th.hud_title = parse_validated_hex_color(prop_val, theme_name, prop_name, th.hud_title);
+                    else if (prop_name == "hud_score") th.hud_score = parse_validated_hex_color(prop_val, theme_name, prop_name, th.hud_score);
+                    else if (prop_name == "hud_label") th.hud_label = parse_validated_hex_color(prop_val, theme_name, prop_name, th.hud_label);
                     else if (prop_name == "ghost_alpha") {
-                        try { th.ghost_alpha = std::stof(prop_val.text); } catch (...) {}
+                        if (prop_val.type == TokenType::FloatNumber || prop_val.type == TokenType::IntNumber) {
+                            try {
+                                float a = std::stof(prop_val.text);
+                                if (a < 0.0f || a > 1.0f) {
+                                    std::cerr << "Config error: 'ghost_alpha' in theme \"" << theme_name
+                                              << "\" must be between 0.0 and 1.0, got " << a
+                                              << ". Keeping default " << th.ghost_alpha << "." << std::endl;
+                                } else {
+                                    th.ghost_alpha = a;
+                                }
+                            } catch (...) {
+                                std::cerr << "Config error: Invalid number for 'ghost_alpha': '" << prop_val.text << "'." << std::endl;
+                            }
+                        } else {
+                            std::cerr << "Config error: 'ghost_alpha' in theme \"" << theme_name
+                                      << "\" must be a number between 0.0 and 1.0, got '" << prop_val.text << "'." << std::endl;
+                        }
                     }
-                    else if (prop_name == "hud_background") th.hud_background = parse_hex_color(prop_val.text, th.hud_background);
-                    else if (prop_name == "hud_border") th.hud_border = parse_hex_color(prop_val.text, th.hud_border);
-                    else if (prop_name == "hud_title") th.hud_title = parse_hex_color(prop_val.text, th.hud_title);
-                    else if (prop_name == "hud_score") th.hud_score = parse_hex_color(prop_val.text, th.hud_score);
-                    else if (prop_name == "hud_label") th.hud_label = parse_hex_color(prop_val.text, th.hud_label);
                     else if (prop_name == "piece_colors") {
                         if (prop_val.type == TokenType::BracketOpen) {
                             std::vector<Color> colors;
+                            size_t color_idx = 0;
                             while (true) {
                                 Token arr_tok = lexer.next_token();
                                 if (arr_tok.type == TokenType::BracketClose || arr_tok.type == TokenType::EndOfFile) break;
                                 if (arr_tok.type == TokenType::Comma) continue;
-                                if (arr_tok.type == TokenType::String) {
-                                    colors.push_back(parse_hex_color(arr_tok.text, WHITE));
+
+                                Color default_col = (color_idx < th.piece_colors.size()) ? th.piece_colors[color_idx] : WHITE;
+                                if (arr_tok.type != TokenType::String || !is_valid_hex_color(arr_tok.text)) {
+                                    std::cerr << "Config error: Invalid hex color format \"" << arr_tok.text
+                                              << "\" at element " << color_idx << " of 'piece_colors' in theme \""
+                                              << theme_name << "\". Using default." << std::endl;
+                                    colors.push_back(default_col);
+                                } else {
+                                    colors.push_back(parse_hex_color(arr_tok.text, default_col));
                                 }
+                                color_idx++;
                             }
                             if (!colors.empty()) {
+                                if (colors.size() < 8) {
+                                    std::cerr << "Config warning: 'piece_colors' in theme \"" << theme_name
+                                              << "\" contains " << colors.size() << " colors (8 required for Flat set). Padding with defaults." << std::endl;
+                                    while (colors.size() < 8 && colors.size() < th.piece_colors.size()) {
+                                        colors.push_back(th.piece_colors[colors.size()]);
+                                    }
+                                }
                                 th.piece_colors = std::move(colors);
                             }
                         } else {
+                            std::cerr << "Config error: 'piece_colors' in theme \"" << theme_name
+                                      << "\" must be an array of hex colors [ \"#...\", ... ]." << std::endl;
                             skip_json_value(lexer, prop_val);
                         }
                     } else if (prop_name == "layer_colors") {
                         if (prop_val.type == TokenType::BracketOpen) {
                             std::vector<Color> colors;
+                            size_t color_idx = 0;
                             while (true) {
                                 Token arr_tok = lexer.next_token();
                                 if (arr_tok.type == TokenType::BracketClose || arr_tok.type == TokenType::EndOfFile) break;
                                 if (arr_tok.type == TokenType::Comma) continue;
-                                if (arr_tok.type == TokenType::String) {
-                                    colors.push_back(parse_hex_color(arr_tok.text, WHITE));
+
+                                Color default_col = (color_idx < th.layer_colors.size()) ? th.layer_colors[color_idx] : WHITE;
+                                if (arr_tok.type != TokenType::String || !is_valid_hex_color(arr_tok.text)) {
+                                    std::cerr << "Config error: Invalid hex color format \"" << arr_tok.text
+                                              << "\" at element " << color_idx << " of 'layer_colors' in theme \""
+                                              << theme_name << "\". Using default." << std::endl;
+                                    colors.push_back(default_col);
+                                } else {
+                                    colors.push_back(parse_hex_color(arr_tok.text, default_col));
                                 }
+                                color_idx++;
                             }
                             if (!colors.empty()) {
                                 th.layer_colors = std::move(colors);
                             }
                         } else {
+                            std::cerr << "Config error: 'layer_colors' in theme \"" << theme_name
+                                      << "\" must be an array of hex colors [ \"#...\", ... ]." << std::endl;
                             skip_json_value(lexer, prop_val);
                         }
                     } else {
@@ -701,6 +880,8 @@ Config Config::load(const std::string& filename) {
 
     std::cout << "Configuration loaded: Pit " << cfg.width << "x" << cfg.length << " (length) x " << cfg.depth
               << " (depth), Window " << cfg.window_width << "x" << cfg.window_height
+              << ", Difficulty: \"" << cfg.difficulty << "\""
+              << " (" << cfg.step_times.get(parse_difficulty(cfg.difficulty)) << "s)"
               << ", Theme: \"" << cfg.theme << "\", Layer Coloring: "
               << (cfg.color_by_layer ? "Enabled" : "Disabled")
               << ", Next Piece Preview: "

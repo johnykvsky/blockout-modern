@@ -482,17 +482,24 @@ void Renderer::draw_hud(const Game& game, bool quit_requested, bool restart_requ
     DrawText(TextFormat("PIT: %dx%dx%d", game.pit().width(), game.pit().height(), game.pit().depth()),
              panel_x + 37, title_y + 60, 16, theme_.hud_title);
 
+    Color diff_col = (game.difficulty() == Difficulty::Easy)    ? Color{100, 255, 160, 255} :
+                     (game.difficulty() == Difficulty::Normal)  ? Color{80, 200, 255, 255} :
+                     (game.difficulty() == Difficulty::Hard)    ? Color{255, 180, 60, 255} :
+                                                                  Color{255, 80, 100, 255};
+    DrawText(TextFormat("DIFFICULTY: %s (%.2fs)", difficulty_name(game.difficulty()).c_str(), game.step_time()),
+             panel_x + 37, title_y + 82, 14, diff_col);
+
     // Score Board
-    int y = (screen_height_ < 720) ? 95 : 125;
+    int y = (screen_height_ < 720) ? 122 : 148;
     DrawText("SCORE", panel_x + 30, y, 16, theme_.hud_label);
     DrawText(TextFormat("%08d", game.score()), panel_x + 30, y + 24, 30, theme_.hud_score);
 
-    int step_score = (screen_height_ < 720) ? 60 : 75;
-    int step_stat  = (screen_height_ < 720) ? 50 : 62;
+    int step_score = (screen_height_ < 720) ? 58 : 72;
+    int step_stat  = (screen_height_ < 720) ? 48 : 58;
 
     y += step_score;
-    DrawText("HIGH SCORE", panel_x + 30, y, 16, theme_.hud_label);
-    DrawText(TextFormat("%08d", game.high_score()), panel_x + 30, y + 24, 26, {200, 200, 200, 255});
+    DrawText(TextFormat("HIGH SCORE (%s)", difficulty_name(game.difficulty()).c_str()), panel_x + 30, y, 14, theme_.hud_label);
+    DrawText(TextFormat("%08d", game.high_score()), panel_x + 30, y + 22, 26, {200, 200, 200, 255});
 
     y += step_stat + 8;
     DrawText("LEVEL", panel_x + 30, y, 16, theme_.hud_label);
@@ -607,7 +614,8 @@ void Renderer::draw_hud(const Game& game, bool quit_requested, bool restart_requ
         DrawRectangle(cx - 180, cy - 70, 360, 140, Fade({15, 10, 15, 255}, 0.94f));
         DrawRectangleLines(cx - 180, cy - 70, 360, 140, {255, 80, 80, 255});
         DrawText("GAME OVER", cx - 95, cy - 45, 34, {255, 80, 80, 255});
-        DrawText(TextFormat("Final Score: %d", game.score()), cx - 80, cy, 20, RAYWHITE);
+        const char* final_score_str = TextFormat("Final Score: %d (%s)", game.score(), difficulty_name(game.difficulty()).c_str());
+        DrawText(final_score_str, cx - MeasureText(final_score_str, 20) / 2, cy, 20, RAYWHITE);
         DrawText("Press R or ENTER to Restart", cx - 125, cy + 30, 18, {100, 255, 160, 255});
     }
 }

@@ -6,7 +6,12 @@
 namespace blockout {
 
 Game::Game(AudioManager& audio, const Config& cfg)
-    : preview_next_piece_(cfg.preview_next_piece), audio_(audio), pit_(cfg.width, cfg.length, cfg.depth) {
+    : preview_next_piece_(cfg.preview_next_piece),
+      audio_(audio),
+      pit_(cfg.width, cfg.length, cfg.depth),
+      difficulty_(parse_difficulty(cfg.difficulty)),
+      start_level_(difficulty_start_level(difficulty_)),
+      step_times_(cfg.step_times) {
     load_high_score();
     reset();
 }
@@ -15,14 +20,15 @@ void Game::reset() {
     pit_.clear();
     piece_mgr_.reset_bag();
     score_ = 0;
-    level_ = 0;
+    level_ = start_level_;
     lines_cleared_ = 0;
     cubes_placed_ = 0;
     fall_timer_ = 0.0f;
     spark_timer_ = 0.0f;
     state_ = GameState::Playing;
 
-    step_time_ = TIME_BASE * std::pow(TIME_LEVEL_FACTOR, static_cast<float>(level_));
+    initial_step_time_ = step_times_.get(difficulty_);
+    step_time_ = initial_step_time_;
 
     next_piece_ = piece_mgr_.draw_next();
     spawn_piece();
@@ -161,9 +167,10 @@ void Game::lock_piece() {
 
     // Check level progression
     int cube_per_level = pit_.height() * 15 + pit_.width() * 15;
-    if (cubes_placed_ >= cube_per_level * (level_ + 1) && level_ < 10) {
+    if (cubes_placed_ >= cube_per_level * (level_ - start_level_ + 1) && level_ < 10) {
         level_++;
-        step_time_ = TIME_BASE * std::pow(TIME_LEVEL_FACTOR, static_cast<float>(level_));
+        int diff_levels = level_ - start_level_;
+        step_time_ = std::max(0.05f, initial_step_time_ * std::pow(TIME_LEVEL_FACTOR, static_cast<float>(diff_levels)));
         audio_.play_level();
     }
 
@@ -196,8 +203,9 @@ void Game::compute_score(int lines_removed, bool pit_empty) {
     int points = std::max(1, static_cast<int>(std::round(total)));
     score_ += points;
 
-    if (score_ > high_score_) {
-        high_score_ = score_;
+    size_t diff_idx = static_cast<size_t>(difficulty_);
+    if (score_ > high_scores_[diff_idx]) {
+        high_scores_[diff_idx] = score_;
         save_high_score();
     }
 }
@@ -229,15 +237,54 @@ void Game::toggle_pause() {
 
 void Game::load_high_score() {
     std::ifstream file("highscore.txt");
-    if (file.is_open()) {
-        file >> high_score_;
+    if (!file.is_open()) return;
+
+    std::string line;
+    bool found_named_entries = false;
+
+    while (std::getline(file, line)) {
+        auto start = line.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        auto end = line.find_last_not_of(" \t\r\n");
+        std::string trimmed = line.substr(start, end - start + 1);
+        if (trimmed.empty() || trimmed[0] == '#') continue;
+
+        auto colon = trimmed.find(':');
+        if (colon != std::string::npos) {
+            found_named_entries = true;
+            std::string key = trimmed.substr(0, colon);
+            std::string val_str = trimmed.substr(colon + 1);
+
+            auto ks = key.find_first_not_of(" \t");
+            auto ke = key.find_last_not_of(" \t");
+            if (ks != std::string::npos) key = key.substr(ks, ke - ks + 1);
+            for (char& c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+            int val = 0;
+            try { val = std::stoi(val_str); } catch (...) {}
+
+            if (key == "easy") high_scores_[static_cast<size_t>(Difficulty::Easy)] = val;
+            else if (key == "normal") high_scores_[static_cast<size_t>(Difficulty::Normal)] = val;
+            else if (key == "hard") high_scores_[static_cast<size_t>(Difficulty::Hard)] = val;
+            else if (key == "extreme") high_scores_[static_cast<size_t>(Difficulty::Extreme)] = val;
+        } else if (!found_named_entries) {
+            // Legacy single integer file (attribute to easy)
+            try {
+                int legacy_val = std::stoi(trimmed);
+                high_scores_[static_cast<size_t>(Difficulty::Easy)] = legacy_val;
+                return;
+            } catch (...) {}
+        }
     }
 }
 
 void Game::save_high_score() {
     std::ofstream file("highscore.txt");
     if (file.is_open()) {
-        file << high_score_;
+        file << "easy: " << high_scores_[static_cast<size_t>(Difficulty::Easy)] << "\n";
+        file << "normal: " << high_scores_[static_cast<size_t>(Difficulty::Normal)] << "\n";
+        file << "hard: " << high_scores_[static_cast<size_t>(Difficulty::Hard)] << "\n";
+        file << "extreme: " << high_scores_[static_cast<size_t>(Difficulty::Extreme)] << "\n";
     }
 }
 
